@@ -185,7 +185,7 @@ void PanasonicACCNT::set_data(bool set) {
   std::string verticalSwing = determine_vertical_swing(this->data[4]);
   std::string horizontalSwing = determine_horizontal_swing(this->data[4]);
 
-  std::string preset = determine_preset(this->data[5]);
+  climate::ClimatePreset preset = determine_preset(this->data[5]);
   bool nanoex = determine_preset_nanoex(this->data[5]);
   bool eco = determine_eco(this->data[8]);
   bool econavi = determine_econavi(this->data[5]);
@@ -373,7 +373,7 @@ climate::ClimateMode PanasonicACCNT::determine_mode(uint8_t mode) {
   }
 }
 
-std::string PanasonicACCNT::determine_fan_speed(uint8_t speed) {
+climate::ClimateFanMode PanasonicACCNT::determine_fan_speed(uint8_t speed) {
   switch (speed) {
     case 0xA0:  // Auto
       return climate::CLIMATE_FAN_AUTO;
@@ -389,7 +389,7 @@ std::string PanasonicACCNT::determine_fan_speed(uint8_t speed) {
       return climate::CLIMATE_FAN_HIGH;
     default:
       ESP_LOGW(TAG, "Received unknown fan speed");
-      return "Unknown";
+      return climate::CLIMATE_FAN_AUTO;
   }
 }
 
@@ -443,7 +443,7 @@ std::string PanasonicACCNT::determine_horizontal_swing(uint8_t swing) {
   }
 }
 
-std::string PanasonicACCNT::determine_preset(uint8_t preset) {
+climate::ClimatePreset PanasonicACCNT::determine_preset(uint8_t preset) {
   uint8_t nib = (preset >> 0) & 0x0F;  // Right nib for preset (powerful/quiet)
 
   switch (nib) {
