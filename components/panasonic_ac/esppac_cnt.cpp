@@ -89,22 +89,40 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
       this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
     }
 
-    std::string fanMode = *call.get_custom_fan_mode();
+    switch (*call.get_fan_mode()) {
+      case climate::CLIMATE_FAN_LOW:
+        this->cmd[3] = 0x30;
+        break;
+      case climate::CLIMATE_FAN_MEDIUM:
+        this->cmd[3] = 0x50;
+        break;
+      case climate::CLIMATE_FAN_HIGH:
+        this->cmd[3] = 0x70;
+        break;
+      case climate::CLIMATE_FAN_AUTO:
+        this->cmd[3] = 0xA0;
+        break;
+      default:
+        ESP_LOGV(TAG, "Unsupported mode requested");
+        break;
+    }
 
-    if (fanMode == climate::CLIMATE_FAN_AUTO)
-      this->cmd[3] = 0xA0;
-    else if (fanMode == climate::CLIMATE_FAN_LOW)
-      this->cmd[3] = 0x30;
-    else if (fanMode == "2")
-      this->cmd[3] = 0x40;
-    else if (fanMode == climate::CLIMATE_FAN_MEDIUM)
-      this->cmd[3] = 0x50;
-    else if (fanMode == "4")
-      this->cmd[3] = 0x60;
-    else if (fanMode == climate::CLIMATE_FAN_HIGH)
-      this->cmd[3] = 0x70;
-    else
-      ESP_LOGV(TAG, "Unsupported fan mode requested");
+    // std::string fanMode = *call.get_custom_fan_mode();
+
+    // if (fanMode == climate::CLIMATE_FAN_AUTO)
+    //   this->cmd[3] = 0xA0;
+    // else if (fanMode == climate::CLIMATE_FAN_LOW)
+    //   this->cmd[3] = 0x30;
+    // else if (fanMode == "2")
+    //   this->cmd[3] = 0x40;
+    // else if (fanMode == climate::CLIMATE_FAN_MEDIUM)
+    //   this->cmd[3] = 0x50;
+    // else if (fanMode == "4")
+    //   this->cmd[3] = 0x60;
+    // else if (fanMode == climate::CLIMATE_FAN_HIGH)
+    //   this->cmd[3] = 0x70;
+    // else
+    //   ESP_LOGV(TAG, "Unsupported fan mode requested");
   }
 
   if (call.get_swing_mode().has_value()) {
@@ -132,16 +150,27 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
   if (call.get_preset().has_value()) {
     ESP_LOGV(TAG, "Requested preset change");
 
-    std::string preset = *call.get_custom_preset();
+    switch (*call.get_preset()) {
+      case climate::CLIMATE_PRESET_COMFORT:
+        this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
+        break;
+      case climate::CLIMATE_PRESET_BOOST:
+        this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
+        break;
+      case climate::CLIMATE_PRESET_QUIET:
+        this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
+        break;
 
-    if (preset.compare(climate::CLIMATE_PRESET_COMFORT) == 0)
-      this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
-    else if (preset.compare(climate::CLIMATE_PRESET_BOOST) == 0)
-      this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
-    else if (preset.compare(climate::CLIMATE_PRESET_QUIET) == 0)
-      this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
-    else
-      ESP_LOGV(TAG, "Unsupported preset requested");
+    // std::string preset = *call.get_custom_preset();
+
+    // if (preset.compare(climate::CLIMATE_PRESET_COMFORT) == 0)
+    //   this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
+    // else if (preset.compare(climate::CLIMATE_PRESET_BOOST) == 0)
+    //   this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
+    // else if (preset.compare(climate::CLIMATE_PRESET_QUIET) == 0)
+    //   this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
+    // else
+    //   ESP_LOGV(TAG, "Unsupported preset requested");
   }
 
 }
