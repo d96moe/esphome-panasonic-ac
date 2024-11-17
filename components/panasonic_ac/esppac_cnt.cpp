@@ -180,7 +180,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
  */
 void PanasonicACCNT::set_data(bool set) {
   this->mode = determine_mode(this->data[0]);
-  this->custom_fan_mode = determine_fan_speed(this->data[3]);
+  this->fan_mode = determine_fan_speed(this->data[3]);
 
   std::string verticalSwing = determine_vertical_swing(this->data[4]);
   std::string horizontalSwing = determine_horizontal_swing(this->data[4]);
