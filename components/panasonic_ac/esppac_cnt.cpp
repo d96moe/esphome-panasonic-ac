@@ -171,8 +171,8 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     //   this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
     // else
     //   ESP_LOGV(TAG, "Unsupported preset requested");
+    }
   }
-
 }
 
 /*
