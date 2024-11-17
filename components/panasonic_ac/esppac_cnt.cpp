@@ -83,7 +83,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
   if (call.get_fan_mode().has_value()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
-    if(this->custom_preset != "Normal")
+    if(this->custom_preset != climate::CLIMATE_PRESET_COMFORT)
     {
       ESP_LOGV(TAG, "Resetting preset");
       this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
@@ -157,7 +157,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
       case climate::CLIMATE_PRESET_BOOST:
         this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
         break;
-      case climate::CLIMATE_PRESET_QUIET:
+      case climate::CLIMATE_PRESET_ECO:
         this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
         break;
 
@@ -376,17 +376,17 @@ climate::ClimateMode PanasonicACCNT::determine_mode(uint8_t mode) {
 std::string PanasonicACCNT::determine_fan_speed(uint8_t speed) {
   switch (speed) {
     case 0xA0:  // Auto
-      return "Automatic";
+      return climate::CLIMATE_FAN_AUTO;
     case 0x30:  // 1
-      return "1";
+      return climate::CLIMATE_FAN_LOW;
     case 0x40:  // 2
-      return "2";
+      return climate::CLIMATE_FAN_LOW;
     case 0x50:  // 3
-      return "3";
+      return climate::CLIMATE_FAN_MEDIUM;
     case 0x60:  // 4
-      return "4";
+      return climate::CLIMATE_FAN_HIGH;
     case 0x70:  // 5
-      return "5";
+      return climate::CLIMATE_FAN_HIGH;
     default:
       ESP_LOGW(TAG, "Received unknown fan speed");
       return "Unknown";
@@ -448,14 +448,14 @@ std::string PanasonicACCNT::determine_preset(uint8_t preset) {
 
   switch (nib) {
     case 0x02:
-      return "Powerful";
+      return climate::CLIMATE_PRESET_BOOST;
     case 0x04:
-      return "Quiet";
+      return climate::CLIMATE_PRESET_ECO;
     case 0x00:
-      return "Normal";
+      return climate::CLIMATE_PRESET_COMFORT;
     default:
       ESP_LOGW(TAG, "Received unknown preset");
-      return "Normal";
+      return climate::CLIMATE_PRESET_COMFORT;
   }
 }
 
