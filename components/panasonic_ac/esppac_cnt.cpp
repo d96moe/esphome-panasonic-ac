@@ -80,7 +80,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     this->cmd[1] = *call.get_target_temperature() / TEMPERATURE_STEP;
   }
 
-  if (call.get_custom_fan_mode().has_value()) {
+  if (call.get_fan_mode().has_value()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
     if(this->custom_preset != "Normal")
@@ -91,17 +91,17 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
 
     std::string fanMode = *call.get_custom_fan_mode();
 
-    if (fanMode == "Automatic")
+    if (fanMode == climate::CLIMATE_FAN_AUTO)
       this->cmd[3] = 0xA0;
-    else if (fanMode == "1")
+    else if (fanMode == climate::CLIMATE_FAN_LOW)
       this->cmd[3] = 0x30;
     else if (fanMode == "2")
       this->cmd[3] = 0x40;
-    else if (fanMode == "3")
+    else if (fanMode == climate::CLIMATE_FAN_MEDIUM)
       this->cmd[3] = 0x50;
     else if (fanMode == "4")
       this->cmd[3] = 0x60;
-    else if (fanMode == "5")
+    else if (fanMode == climate::CLIMATE_FAN_HIGH)
       this->cmd[3] = 0x70;
     else
       ESP_LOGV(TAG, "Unsupported fan mode requested");
@@ -129,16 +129,16 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     }
   }
 
-  if (call.get_custom_preset().has_value()) {
+  if (call.get_preset().has_value()) {
     ESP_LOGV(TAG, "Requested preset change");
 
     std::string preset = *call.get_custom_preset();
 
-    if (preset.compare("Normal") == 0)
+    if (preset.compare(climate::CLIMATE_PRESET_COMFORT) == 0)
       this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
-    else if (preset.compare("Powerful") == 0)
+    else if (preset.compare(climate::CLIMATE_PRESET_BOOST) == 0)
       this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
-    else if (preset.compare("Quiet") == 0)
+    else if (preset.compare(climate::CLIMATE_PRESET_QUIET) == 0)
       this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
     else
       ESP_LOGV(TAG, "Unsupported preset requested");
