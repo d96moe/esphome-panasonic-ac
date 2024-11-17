@@ -83,7 +83,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
   if (call.get_fan_mode().has_value()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
-    if(this->custom_preset != climate::CLIMATE_PRESET_COMFORT)
+    if(this->preset != climate::CLIMATE_PRESET_COMFORT)
     {
       ESP_LOGV(TAG, "Resetting preset");
       this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
@@ -233,7 +233,7 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_swing_vertical(verticalSwing);
   this->update_swing_horizontal(horizontalSwing);
 
-  this->custom_preset = preset;
+  this->preset = preset;
 
   this->update_nanoex(nanoex);
   this->update_eco(eco);
