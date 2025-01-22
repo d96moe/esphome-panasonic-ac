@@ -159,25 +159,28 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     }
   }
 
-  if (call.get_custom_preset().has_value()) {
+  if (call.get_preset().has_value()) {
     ESP_LOGV(TAG, "Requested preset change");
-
-    std::string preset = *call.get_custom_preset();
-
-    if (preset.compare("Normal") == 0) {
-      set_value(0xB2, 0x41);
-      set_value(0x35, 0x42);
-      set_value(0x34, 0x42);
-    } else if (preset.compare("Powerful") == 0) {
-      set_value(0xB2, 0x42);
-      set_value(0x35, 0x42);
-      set_value(0x34, 0x42);
-    } else if (preset.compare("Quiet") == 0) {
-      set_value(0xB2, 0x43);
-      set_value(0x35, 0x42);
-      set_value(0x34, 0x42);
-    } else
-      ESP_LOGV(TAG, "Unsupported preset requested");
+    
+    switch (*call.get_preset()) {
+      case climate::CLIMATE_PRESET_COMFORT:
+        set_value(0xB2, 0x41);
+        set_value(0x35, 0x42);
+        set_value(0x34, 0x42);
+        break;
+      case climate::CLIMATE_PRESET_BOOST:
+        set_value(0xB2, 0x42);
+        set_value(0x35, 0x42);
+        set_value(0x34, 0x42);
+        break;
+      case climate::CLIMATE_PRESET_ECO:
+        set_value(0xB2, 0x43);
+        set_value(0x35, 0x42);
+        set_value(0x34, 0x42);
+        break;
+      default:
+        ESP_LOGV(TAG, "Unsupported preset requested");
+    }
   }
 
   if (this->set_queue_index_ > 0)  // Only send packet if any changes need to be made
@@ -329,17 +332,17 @@ std::string PanasonicACWLAN::determine_fan_speed(uint8_t speed) {
   }
 }
 
-std::string PanasonicACWLAN::determine_preset(uint8_t preset) {
+climate::ClimatePreset PanasonicACWLAN::determine_preset(uint8_t preset) {
   switch (preset) {
     case 0x43:  // Quiet
-      return "Quiet";
+      return climate::CLIMATE_PRESET_ECO;
     case 0x42:  // Powerful
-      return "Powerful";
+      return climate::CLIMATE_PRESET_BOOST;
     case 0x41:  // Normal
-      return "Normal";
+      return climate::CLIMATE_PRESET_COMFORT;
     default:
       ESP_LOGW(TAG, "Received unknown preset");
-      return "Normal";
+      return climate::CLIMATE_PRESET_COMFORT;
   }
 }
 
@@ -443,7 +446,7 @@ void PanasonicACWLAN::handle_packet() {
     update_nanoex(nanoex);
 
     this->custom_fan_mode = determine_fan_speed(this->rx_buffer_[26]);
-    this->custom_preset = determine_preset(this->rx_buffer_[42]);
+    this->preset = determine_preset(this->rx_buffer_[42]);
 
     this->swing_mode = determine_swing(this->rx_buffer_[30]);
 
@@ -505,7 +508,7 @@ void PanasonicACWLAN::handle_packet() {
           break;
         case 0xB2: // Preset
           ESP_LOGV(TAG, "Received preset");
-          this->custom_preset = determine_preset(this->rx_buffer_[currentIndex + 2]);
+          this->preset = determine_preset(this->rx_buffer_[currentIndex + 2]);
           break;
         case 0xA1:
           ESP_LOGV(TAG, "Received swing mode");
