@@ -118,9 +118,17 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
         set_value(0xB2, 0x41);
         set_value(0xA0, 0x32);
         break;
+      case climate::CLIMATE_FAN_DIFFUSE:
+        set_value(0xB2, 0x41);
+        set_value(0xA0, 0x33);
+        break;
       case climate::CLIMATE_FAN_MEDIUM:
         set_value(0xB2, 0x41);
         set_value(0xA0, 0x34);
+        break;
+      case climate::CLIMATE_FAN_FOCUS:
+        set_value(0xB2, 0x41);
+        set_value(0xA0, 0x35);
         break;
       case climate::CLIMATE_FAN_HIGH:
         set_value(0xB2, 0x41);
@@ -317,11 +325,11 @@ climate::ClimateFanMode PanasonicACWLAN::determine_fan_speed(uint8_t speed) {
     case 0x32:  // 1
       return climate::CLIMATE_FAN_LOW;
     case 0x33:  // 2
-      return climate::CLIMATE_FAN_LOW;
+      return climate::CLIMATE_FAN_DIFFUSE;
     case 0x34:  // 3
       return climate::CLIMATE_FAN_MEDIUM;
     case 0x35:  // 4
-      return climate::CLIMATE_FAN_HIGH;
+      return climate::CLIMATE_FAN_FOCUS;
     case 0x36:  // 5
       return climate::CLIMATE_FAN_HIGH;
     case 0x41:  // Auto

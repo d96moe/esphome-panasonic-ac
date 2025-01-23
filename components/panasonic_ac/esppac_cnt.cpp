@@ -93,8 +93,14 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
       case climate::CLIMATE_FAN_LOW:
         this->cmd[3] = 0x30;
         break;
+      case climate::CLIMATE_FAN_DIFFUSE:
+        this->cmd[3] = 0x40;
+        break;
       case climate::CLIMATE_FAN_MEDIUM:
         this->cmd[3] = 0x50;
+        break;
+      case climate::CLIMATE_FAN_FOCUS:
+        this->cmd[3] = 0x60;
         break;
       case climate::CLIMATE_FAN_HIGH:
         this->cmd[3] = 0x70;
@@ -380,11 +386,11 @@ climate::ClimateFanMode PanasonicACCNT::determine_fan_speed(uint8_t speed) {
     case 0x30:  // 1
       return climate::CLIMATE_FAN_LOW;
     case 0x40:  // 2
-      return climate::CLIMATE_FAN_LOW;
+      return climate::CLIMATE_FAN_DIFFUSE;
     case 0x50:  // 3
       return climate::CLIMATE_FAN_MEDIUM;
     case 0x60:  // 4
-      return climate::CLIMATE_FAN_HIGH;
+      return climate::CLIMATE_FAN_FOCUS;
     case 0x70:  // 5
       return climate::CLIMATE_FAN_HIGH;
     default:
