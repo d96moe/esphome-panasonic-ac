@@ -50,7 +50,7 @@ class PanasonicACCNT : public PanasonicAC {
   void handle_packet();
 
   climate::ClimateMode determine_mode(uint8_t mode);
-  climate::ClimateFanMode determine_fan_speed(uint8_t speed);
+  std::string determine_fan_speed(uint8_t speed);
 
   std::string determine_vertical_swing(uint8_t swing);
   std::string determine_horizontal_swing(uint8_t swing);
