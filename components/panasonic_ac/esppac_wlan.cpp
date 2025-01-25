@@ -110,22 +110,22 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
 
    std::string fanMode = *call.get_custom_fan_mode();
 
-    if (fanMode == "Automatic") {
+    if (fanMode == "Auto") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x41);
-    } else if (fanMode == "1") {
+    } else if (fanMode == "Low") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x32);
-    } else if (fanMode == "2") {
+    } else if (fanMode == "Low-Medium") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x33);
-    } else if (fanMode == "3") {
+    } else if (fanMode == "Medium") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x34);
-    } else if (fanMode == "4") {
+    } else if (fanMode == "Medium-High") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x35);
-    } else if (fanMode == "5") {
+    } else if (fanMode == "High") {
       set_value(0xB2, 0x41);
       set_value(0xA0, 0x36);
     } else
@@ -315,17 +315,17 @@ climate::ClimateMode PanasonicACWLAN::determine_mode(uint8_t mode) {
 std::string PanasonicACWLAN::determine_fan_speed(uint8_t speed) {
   switch (speed) {
     case 0x32:  // 1
-      return "1";
+      return "Low";
     case 0x33:  // 2
-      return "2";
+      return "Low-Medium";
     case 0x34:  // 3
-      return "3";
+      return "Medium";
     case 0x35:  // 4
-      return "4";
+      return "Medium-High";
     case 0x36:  // 5
-      return "5";
+      return "High";
     case 0x41:  // Auto
-      return "Automatic";
+      return "Auto";
     default:
       ESP_LOGW(TAG, "Received unknown fan speed");
       return "unknown";

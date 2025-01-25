@@ -91,17 +91,17 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
 
     std::string fanMode = *call.get_custom_fan_mode();
 
-    if (fanMode == "Automatic")
+    if (fanMode == "Auto")
       this->cmd[3] = 0xA0;
-    else if (fanMode == "1")
+    else if (fanMode == "Low")
       this->cmd[3] = 0x30;
-    else if (fanMode == "2")
+    else if (fanMode == "Low-Medium")
       this->cmd[3] = 0x40;
-    else if (fanMode == "3")
+    else if (fanMode == "Mid")
       this->cmd[3] = 0x50;
-    else if (fanMode == "4")
+    else if (fanMode == "Medium-High")
       this->cmd[3] = 0x60;
-    else if (fanMode == "5")
+    else if (fanMode == "High")
       this->cmd[3] = 0x70;
     else
       ESP_LOGV(TAG, "Unsupported fan mode requested");
@@ -358,17 +358,17 @@ climate::ClimateMode PanasonicACCNT::determine_mode(uint8_t mode) {
 std::string PanasonicACCNT::determine_fan_speed(uint8_t speed) {
   switch (speed) {
     case 0xA0:  // Auto
-      return "Automatic";;
+      return "Auto";;
     case 0x30:  // 1
-      return "1";
+      return "Low";
     case 0x40:  // 2
-      return "2";
+      return "Low-Medium";
     case 0x50:  // 3
-       return "3";
+       return "Medium";
     case 0x60:  // 4
-      return "4";
+      return "Medium-High";
     case 0x70:  // 5
-      return "5";
+      return "High";
     default:
       ESP_LOGW(TAG, "Received unknown fan speed");
        return "Unknown";
