@@ -362,7 +362,7 @@ std::string PanasonicACCNT::determine_fan_speed(uint8_t speed) {
     case 0x30:  // 1
       return "1";
     case 0x40:  // 2
-      rreturn "2";
+      return "2";
     case 0x50:  // 3
        return "3";
     case 0x60:  // 4

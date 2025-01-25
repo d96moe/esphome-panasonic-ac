@@ -504,7 +504,7 @@ void PanasonicACWLAN::handle_packet() {
           break;
         case 0xA0:  // Fan speed
           ESP_LOGV(TAG, "Received fan speed");
-          this->fan_mode = determine_fan_speed(this->rx_buffer_[currentIndex + 2]);
+          this->custom_fan_mode = determine_fan_speed(this->rx_buffer_[currentIndex + 2]);
           break;
         case 0xB2: // Preset
           ESP_LOGV(TAG, "Received preset");
