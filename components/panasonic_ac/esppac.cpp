@@ -216,7 +216,8 @@ void PanasonicAC::set_current_temperature_sensor(sensor::Sensor *current_tempera
 
 void PanasonicAC::set_vertical_swing_select(select::Select *vertical_swing_select) {
   this->vertical_swing_select_ = vertical_swing_select;
-  this->vertical_swing_select_->add_on_state_callback([this](const std::string &value, size_t index) {
+  this->vertical_swing_select_->add_on_state_callback([this](size_t index) {
+    std::string value = this->vertical_swing_select_->at(index).value();
     if (value == this->vertical_swing_state_)
       return;
     this->on_vertical_swing_change(value);
@@ -225,7 +226,8 @@ void PanasonicAC::set_vertical_swing_select(select::Select *vertical_swing_selec
 
 void PanasonicAC::set_horizontal_swing_select(select::Select *horizontal_swing_select) {
   this->horizontal_swing_select_ = horizontal_swing_select;
-  this->horizontal_swing_select_->add_on_state_callback([this](const std::string &value, size_t index) {
+  this->horizontal_swing_select_->add_on_state_callback([this](size_t index) {
+    std::string value = this->horizontal_swing_select_->at(index).value();
     if (value == this->horizontal_swing_state_)
       return;
     this->on_horizontal_swing_change(value);
