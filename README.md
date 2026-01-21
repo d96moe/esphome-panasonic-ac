@@ -12,7 +12,7 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
 
 # Supported hardware
 
-This library works with both the CN-CNT port and the CN-WLAN port. CN-WLAN is only available on newer units. Either port can be used on units that have both ports regardless of the usage of the other port (ie. it is possible to leave the DNSK-P11 connected to CN-WLAN and connect the ESP to CN-CNT). 
+This library works with both the CN-CNT port and the CN-WLAN port. CN-WLAN is only available on newer units. Either port can be used on units that have both ports regardless of the usage of the other port (ie. it is possible to leave the DNSK-P11 connected to CN-WLAN and connect the ESP to CN-CNT).
 
 Works on the ESP8266 but ESP32 is preferred for the multiple hardware serial ports.
 
@@ -24,8 +24,8 @@ Works on the ESP8266 but ESP32 is preferred for the multiple hardware serial por
 * Soldering iron
 * Wires to solder from Logic converter to ESP
 * Heat shrink
-* ESPHome 2022.5.0 or newer
-* Home Assistant 2021.8.0 or newer
+* ESPHome 2025.11.0 or newer
+* Home Assistant 2025.11.0 or newer
 
 # Notes
 
@@ -70,9 +70,25 @@ In order to find out which features are supported by your AC, check the remote t
 **Enabling unsupported features can lead to undefined behavior and may damage your AC. Make sure to check your remote or manual first.**
 **current_power_consumption is just as ESTIMATED value by the AC**
 
-## Upgrading from 1.x to 2.x
+## Setting temperature offsets
 
-[Upgrade instructions](README.UPGRADING.md)
+As the internal sensors reading might not reflect the actual temperature in the room or outside, you can optionally define a fixed offset for both sensors.
+This offset is internally applied to both, the reported temperature in ESPHome/HomeAssistant as well as to the target temperature. Any shown values always include the defined offset.
+
+- Temperature readings of the AC will be reported as (reading + offset)
+- Target temperatures will be set as (target - offset)
+
+```
+    # Adapt according to your measurements
+    current_temperature_offset: 0 
+    outside_temperature_offset: 0
+```
+
+Examples:
+- If the temperature is actually higher than measured by the AC, set the difference as a positive offset.
+  - E.g. actual temperature = 23°, AC measured temperature = 20° --> offset = 3°
+- If the temperature is actually lower than measured by the AC, set the difference as a negative offset.
+  - E.g. actual temperature = 20°, AC measured temperature = 22° --> offset = -2°
 
 # Hardware installation
 

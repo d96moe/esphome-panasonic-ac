@@ -1,6 +1,8 @@
 #include "esppac_wlan.h"
 #include "esppac_commands_wlan.h"
 
+#include "esphome/core/log.h"
+
 namespace esphome {
 namespace panasonic_ac {
 namespace WLAN {
@@ -101,8 +103,8 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
   }
 
   if (call.get_target_temperature().has_value()) {
-    ESP_LOGV(TAG, "Requested temperature change");
-    set_value(0x31, *call.get_target_temperature() * 2);
+    ESP_LOGV(TAG, "Requested target temp change to %.2f, %.2f including offset", *call.get_target_temperature(), *call.get_target_temperature() - this->current_temperature_offset_);
+    set_value(0x31, (*call.get_target_temperature() - this->current_temperature_offset_) * 2);
   }
 
   if (call.get_fan_mode().has_value()) {
@@ -138,6 +140,8 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
         ESP_LOGV(TAG, "Unsupported fan mode requested");
         break;
     }
+      set_value(0xB2, 0x41);
+      set_value(0xA0, 0x41);
   }
 
   if (call.get_swing_mode().has_value()) {
@@ -301,7 +305,7 @@ bool PanasonicACWLAN::verify_packet() {
  * Field handling
  */
 
-climate::ClimateMode PanasonicACWLAN::determine_mode(uint8_t mode) {
+static climate::ClimateMode determine_mode(uint8_t mode) {
   switch (mode)  // Check mode
   {
     case 0x41:  // Auto
@@ -354,7 +358,7 @@ climate::ClimatePreset PanasonicACWLAN::determine_preset(uint8_t preset) {
   }
 }
 
-std::string PanasonicACWLAN::determine_swing_vertical(uint8_t swing) {
+static const char *determine_swing_vertical(uint8_t swing) {
   switch (swing) {
     case 0x42:  // Down
       return "down";
@@ -372,7 +376,7 @@ std::string PanasonicACWLAN::determine_swing_vertical(uint8_t swing) {
   }
 }
 
-std::string PanasonicACWLAN::determine_swing_horizontal(uint8_t swing) {
+static const char *determine_swing_horizontal(uint8_t swing) {
   switch (swing) {
     case 0x42:  // Left
       return "left";
@@ -390,7 +394,7 @@ std::string PanasonicACWLAN::determine_swing_horizontal(uint8_t swing) {
   }
 }
 
-climate::ClimateSwingMode PanasonicACWLAN::determine_swing(uint8_t swing) {
+static climate::ClimateSwingMode determine_swing(uint8_t swing) {
   switch (swing) {
     case 0x41:  // Both
       return climate::CLIMATE_SWING_BOTH;
@@ -406,7 +410,7 @@ climate::ClimateSwingMode PanasonicACWLAN::determine_swing(uint8_t swing) {
   }
 }
 
-bool PanasonicACWLAN::determine_nanoex(uint8_t nanoex) {
+static constexpr bool determine_nanoex(uint8_t nanoex) {
   switch (nanoex) {
     case 0x42:
       return false;
