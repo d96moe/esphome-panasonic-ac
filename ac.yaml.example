@@ -45,6 +45,12 @@ climate:
     outside_temperature:
       name: Panasonic AC Outside Temperature
 
+    # DNSK-P11 only: exposes the AC error/status code (e.g. "H000" = OK).
+    # Reported in every poll → passive fault detection without sending commands.
+    # error_code:
+    #   name: Panasonic AC Error Code
+    #   id: panasonic_ac_error_code
+
     # Enable as needed
     # eco_switch:
     #   name: Panasonic AC Eco Switch

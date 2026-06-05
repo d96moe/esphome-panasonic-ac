@@ -76,6 +76,16 @@ void PanasonicAC::update_outside_temperature(int8_t temperature) {
   }
 }
 
+void PanasonicAC::update_error_code(const std::string &code) {
+  if (this->error_code_text_sensor_ == nullptr)
+    return;
+  if (this->error_code_state_ == code)
+    return;  // Only publish on change
+  this->error_code_state_ = code;
+  this->error_code_text_sensor_->publish_state(code);
+  ESP_LOGD(TAG, "AC error/status code: %s", code.c_str());
+}
+
 void PanasonicAC::update_current_temperature(int8_t temperature) {
   ESP_LOGV(TAG, "Received current temperature %d", temperature);
   temperature += this->current_temperature_offset_;
@@ -272,6 +282,10 @@ void PanasonicAC::set_mild_dry_switch(switch_::Switch *mild_dry_switch) {
 
 void PanasonicAC::set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor) {
   this->current_power_consumption_sensor_ = current_power_consumption_sensor;
+}
+
+void PanasonicAC::set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor) {
+  this->error_code_text_sensor_ = error_code_text_sensor;
 }
 
 /*

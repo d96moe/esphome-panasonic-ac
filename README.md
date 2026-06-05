@@ -9,6 +9,7 @@ An open source alternative for the Panasonic wi-fi adapter that works locally wi
 * Receive live reports and state from the AC
 * Uses the UART interface on the AC instead of the IR interface
 * Provides a drop-in replacement for the Panasonic DNSK-P11 and the CZ-TACG1 wifi module
+* Optionally exposes the AC's error/status code as a text sensor (DNSK-P11), e.g. `"H000"` = OK. The AC reports it in every poll, so it enables fully passive fault detection (timer-LED / communication error) without sending any command — pair it with a template `binary_sensor` (`state != "H000"`).
 
 # Supported hardware
 

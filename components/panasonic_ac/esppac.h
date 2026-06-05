@@ -4,6 +4,7 @@
 #include "esphome/components/select/select.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 
@@ -11,7 +12,7 @@ namespace esphome {
 
 namespace panasonic_ac {
 
-static const char *const VERSION = "2.5.0";
+static const char *const VERSION = "2.6.0";
 
 static const uint8_t BUFFER_SIZE = 128;  // The maximum size of a single packet (both receive and transmit)
 static const uint8_t READ_TIMEOUT = 20;  // The maximum time to wait before considering a packet complete
@@ -41,6 +42,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_econavi_switch(switch_::Switch *econavi_switch);
   void set_mild_dry_switch(switch_::Switch *mild_dry_switch);
   void set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor);
+  void set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor);
 
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
@@ -58,6 +60,8 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   switch_::Switch *mild_dry_switch_ = nullptr;                  // Switch to toggle mild dry mode on/off
   sensor::Sensor *current_temperature_sensor_ = nullptr;        // Sensor to use for current temperature where AC does not report
   sensor::Sensor *current_power_consumption_sensor_ = nullptr;  // Sensor to store current power consumption from queries
+  text_sensor::TextSensor *error_code_text_sensor_ = nullptr;   // Text sensor for the AC error/status code (e.g. "H000" = OK)
+  std::string error_code_state_;                                // Last published error code, to avoid duplicate publishes
 
   std::string vertical_swing_state_;
   std::string horizontal_swing_state_;
@@ -95,6 +99,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_econavi(bool econavi);
   void update_mild_dry(bool mild_dry);
   void update_current_power_consumption(int16_t power);
+  void update_error_code(const std::string &code);
 
   virtual void on_horizontal_swing_change(const std::string &swing) = 0;
   virtual void on_vertical_swing_change(const std::string &swing) = 0;
