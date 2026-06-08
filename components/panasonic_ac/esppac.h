@@ -1,5 +1,6 @@
 #pragma once
 
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/climate/climate.h"
 #include "esphome/components/select/select.h"
 #include "esphome/components/sensor/sensor.h"
@@ -43,6 +44,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_mild_dry_switch(switch_::Switch *mild_dry_switch);
   void set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor);
   void set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor);
+  void set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor);
 
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
@@ -61,6 +63,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   sensor::Sensor *current_temperature_sensor_ = nullptr;        // Sensor to use for current temperature where AC does not report
   sensor::Sensor *current_power_consumption_sensor_ = nullptr;  // Sensor to store current power consumption from queries
   text_sensor::TextSensor *error_code_text_sensor_ = nullptr;   // Text sensor for the AC error/status code (e.g. "H000" = OK)
+  binary_sensor::BinarySensor *defrost_sensor_ = nullptr;       // Sensor to store defrost status
   std::string error_code_state_;                                // Last published error code, to avoid duplicate publishes
 
   std::string vertical_swing_state_;
@@ -100,6 +103,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_mild_dry(bool mild_dry);
   void update_current_power_consumption(int16_t power);
   void update_error_code(const std::string &code);
+  void update_defrost(bool defrost);
 
   virtual void on_horizontal_swing_change(const std::string &swing) = 0;
   virtual void on_vertical_swing_change(const std::string &swing) = 0;
