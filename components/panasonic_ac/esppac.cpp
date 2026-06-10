@@ -213,7 +213,8 @@ void PanasonicAC::update_raw_packet(const std::vector<uint8_t> &packet) {
 
 void PanasonicAC::update_serial_fault(bool fault) {
   if (this->serial_fault_sensor_ == nullptr) return;
-  if (this->serial_fault_state_ == fault) return;
+  if (this->serial_fault_published_ && this->serial_fault_state_ == fault) return;
+  this->serial_fault_published_ = true;
   this->serial_fault_state_ = fault;
   this->serial_fault_sensor_->publish_state(fault);
   ESP_LOGD(TAG, "AC serial fault: %s", fault ? "true" : "false");

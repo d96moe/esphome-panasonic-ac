@@ -71,6 +71,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   std::string error_code_state_;                                // Last published error code, to avoid duplicate publishes
   std::string raw_packet_state_;                                // Last published raw packet, to avoid duplicate publishes
   bool serial_fault_state_ = false;
+  bool serial_fault_published_ = false;
 
   std::string vertical_swing_state_;
   std::string horizontal_swing_state_;
