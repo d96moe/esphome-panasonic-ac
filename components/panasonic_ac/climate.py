@@ -43,6 +43,7 @@ CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
 CONF_ERROR_CODE = "error_code"
 CONF_DEFROST_SENSOR = "defrost_sensor"
+CONF_SERIAL_FAULT = "serial_fault"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
@@ -109,6 +110,9 @@ CONFIG_SCHEMA = cv.typed_schema(
                   device_class=DEVICE_CLASS_POWER,
                   state_class=STATE_CLASS_MEASUREMENT,
               ),
+                cv.Optional(CONF_SERIAL_FAULT): binary_sensor.binary_sensor_schema(
+                    device_class="problem",
+                ),
             }
         ),
     }
@@ -166,3 +170,7 @@ async def to_code(config):
     if CONF_DEFROST_SENSOR in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])
         cg.add(var.set_defrost_sensor(sens))
+
+    if CONF_SERIAL_FAULT in config:
+        sens = await binary_sensor.new_binary_sensor(config[CONF_SERIAL_FAULT])
+        cg.add(var.set_serial_fault_sensor(sens))

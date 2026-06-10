@@ -45,6 +45,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor);
   void set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor);
   void set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor);
+  void set_serial_fault_sensor(binary_sensor::BinarySensor *serial_fault_sensor);
 
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
@@ -64,7 +65,9 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   sensor::Sensor *current_power_consumption_sensor_ = nullptr;  // Sensor to store current power consumption from queries
   text_sensor::TextSensor *error_code_text_sensor_ = nullptr;   // Text sensor for the AC error/status code (e.g. "H000" = OK)
   binary_sensor::BinarySensor *defrost_sensor_ = nullptr;       // Sensor to store defrost status
+  binary_sensor::BinarySensor *serial_fault_sensor_ = nullptr;  // True when no packet received for >60s (UART freeze)
   std::string error_code_state_;                                // Last published error code, to avoid duplicate publishes
+  bool serial_fault_state_ = false;
 
   std::string vertical_swing_state_;
   std::string horizontal_swing_state_;
@@ -104,6 +107,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_current_power_consumption(int16_t power);
   void update_error_code(const std::string &code);
   void update_defrost(bool defrost);
+  void update_serial_fault(bool fault);
 
   virtual void on_horizontal_swing_change(const std::string &swing) = 0;
   virtual void on_vertical_swing_change(const std::string &swing) = 0;

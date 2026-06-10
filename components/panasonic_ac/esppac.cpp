@@ -193,9 +193,21 @@ void PanasonicAC::update_defrost(bool defrost) {
   }
 }
 
+void PanasonicAC::update_serial_fault(bool fault) {
+  if (this->serial_fault_sensor_ == nullptr) return;
+  if (this->serial_fault_state_ == fault) return;
+  this->serial_fault_state_ = fault;
+  this->serial_fault_sensor_->publish_state(fault);
+  ESP_LOGD(TAG, "AC serial fault: %s", fault ? "true" : "false");
+}
+
 /*
  * Sensor handling
  */
+
+void PanasonicAC::set_serial_fault_sensor(binary_sensor::BinarySensor *sensor) {
+  this->serial_fault_sensor_ = sensor;
+}
 
 void PanasonicAC::set_outside_temperature_sensor(sensor::Sensor *outside_temperature_sensor) {
   this->outside_temperature_sensor_ = outside_temperature_sensor;
