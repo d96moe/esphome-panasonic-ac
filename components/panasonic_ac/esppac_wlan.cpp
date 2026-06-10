@@ -468,7 +468,10 @@ void PanasonicACWLAN::handle_packet() {
         error_code += (char) b;
     }
     update_error_code(error_code);
-    update_raw_packet(this->rx_buffer_);
+    std::vector<uint8_t> masked = this->rx_buffer_;
+    masked[1] = 0x00;       // zero rolling packet counter (changes every poll)
+    masked.back() = 0x00;   // zero checksum (depends on counter)
+    update_raw_packet(masked);
 
     // climate::ClimateAction action = determine_action(); // Determine the current action of the AC
     // this->action = action;
