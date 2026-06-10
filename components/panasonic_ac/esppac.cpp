@@ -206,7 +206,8 @@ void PanasonicAC::update_raw_packet(const std::vector<uint8_t> &packet) {
     s += hex[b >> 4];
     s += hex[b & 0x0F];
   }
-  if (this->raw_packet_text_sensor_->state == s) return;
+  if (this->raw_packet_state_ == s) return;
+  this->raw_packet_state_ = s;
   this->raw_packet_text_sensor_->publish_state(s);
 }
 

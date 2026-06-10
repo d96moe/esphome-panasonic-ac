@@ -69,6 +69,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   binary_sensor::BinarySensor *defrost_sensor_ = nullptr;       // Sensor to store defrost status
   binary_sensor::BinarySensor *serial_fault_sensor_ = nullptr;  // True when no packet received for >60s (UART freeze)
   std::string error_code_state_;                                // Last published error code, to avoid duplicate publishes
+  std::string raw_packet_state_;                                // Last published raw packet, to avoid duplicate publishes
   bool serial_fault_state_ = false;
 
   std::string vertical_swing_state_;
