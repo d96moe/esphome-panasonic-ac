@@ -68,6 +68,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   binary_sensor::BinarySensor *serial_fault_sensor_ = nullptr;  // True when no packet received for >60s (UART freeze)
   std::string error_code_state_;                                // Last published error code, to avoid duplicate publishes
   bool serial_fault_state_ = false;
+  bool serial_fault_published_ = false;
 
   std::string vertical_swing_state_;
   std::string horizontal_swing_state_;
