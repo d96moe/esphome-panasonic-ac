@@ -193,6 +193,23 @@ void PanasonicAC::update_defrost(bool defrost) {
   }
 }
 
+void PanasonicAC::set_raw_packet_text_sensor(text_sensor::TextSensor *sensor) {
+  this->raw_packet_text_sensor_ = sensor;
+}
+
+void PanasonicAC::update_raw_packet(const std::vector<uint8_t> &packet) {
+  if (this->raw_packet_text_sensor_ == nullptr) return;
+  static const char hex[] = "0123456789ABCDEF";
+  std::string s;
+  s.reserve(packet.size() * 2);
+  for (uint8_t b : packet) {
+    s += hex[b >> 4];
+    s += hex[b & 0x0F];
+  }
+  if (this->raw_packet_text_sensor_->state == s) return;
+  this->raw_packet_text_sensor_->publish_state(s);
+}
+
 void PanasonicAC::update_serial_fault(bool fault) {
   if (this->serial_fault_sensor_ == nullptr) return;
   if (this->serial_fault_state_ == fault) return;

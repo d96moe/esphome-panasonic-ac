@@ -42,6 +42,7 @@ CONF_ECONAVI_SWITCH = "econavi_switch"
 CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
 CONF_ERROR_CODE = "error_code"
+CONF_RAW_PACKET = "raw_packet"
 CONF_DEFROST_SENSOR = "defrost_sensor"
 CONF_SERIAL_FAULT = "serial_fault"
 CONF_WLAN = "wlan"
@@ -95,6 +96,9 @@ CONFIG_SCHEMA = cv.typed_schema(
         CONF_WLAN: SCHEMA.extend(
             {
                 cv.GenerateID(): cv.declare_id(PanasonicACWLAN),
+                cv.Optional(CONF_RAW_PACKET): text_sensor.text_sensor_schema(
+                    icon="mdi:code-brackets",
+                ),
             }
         ),
         CONF_CNT: SCHEMA.extend(
@@ -166,6 +170,10 @@ async def to_code(config):
     if CONF_ERROR_CODE in config:
         ts = await text_sensor.new_text_sensor(config[CONF_ERROR_CODE])
         cg.add(var.set_error_code_text_sensor(ts))
+
+    if CONF_RAW_PACKET in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_RAW_PACKET])
+        cg.add(var.set_raw_packet_text_sensor(ts))
 
     if CONF_DEFROST_SENSOR in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])
