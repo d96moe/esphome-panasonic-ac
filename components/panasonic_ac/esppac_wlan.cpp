@@ -510,14 +510,21 @@ void PanasonicACWLAN::handle_packet() {
     // climate::ClimateAction action = determine_action(); // Determine the current action of the AC
     // this->action = action;
 
-    // Phase B: if a probe key is active, scan KV pairs (4-byte tuples from byte 12) for its value.
-    // The probed key is appended as the 18th pair; scanning is used in case the AC reorders keys.
+    // Phase B: scan KV pairs for probe_key. Step size is variable:
+    //   known key:   [key][0x01][value][trailing] = 4 bytes
+    //   unknown key: [key][0x00]                  = 2 bytes
     if (this->probe_key_ != 0) {
-      for (size_t i = 12; i + 2 < this->rx_buffer_.size(); i += 4) {
-        if (this->rx_buffer_[i] == this->probe_key_) {
-          update_probe_value(this->probe_key_, this->rx_buffer_[i + 2]);
+      for (size_t i = 12; i + 1 < this->rx_buffer_.size(); ) {
+        uint8_t k   = this->rx_buffer_[i];
+        uint8_t len = this->rx_buffer_[i + 1];
+        if (k == this->probe_key_) {
+          if (len >= 1 && i + 2 < this->rx_buffer_.size())
+            update_probe_value(this->probe_key_, this->rx_buffer_[i + 2]);
+          else
+            update_probe_value(this->probe_key_, 0xFF);  // key exists, len=0 → unsupported
           break;
         }
+        i += (len == 0 ? 2 : len + 3);  // 2 overhead + len value bytes + 1 trailing
       }
     }
 
