@@ -34,8 +34,7 @@ void PanasonicACCNT::loop() {
   handle_cmd();
   handle_poll();  // Handle sending poll packets
 
-  if (this->state_ == ACState::Ready)
-    update_serial_fault(millis() - this->last_packet_received_ > 60000);
+  update_serial_fault(millis() - this->last_packet_received_ > 60000);
 }
 
 /*

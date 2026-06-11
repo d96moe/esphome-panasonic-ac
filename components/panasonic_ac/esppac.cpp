@@ -36,6 +36,7 @@ void PanasonicAC::setup() {
   // Initialize times
   this->init_time_ = millis();
   this->last_packet_sent_ = millis();
+  this->last_packet_received_ = millis();  // Prevent false serial_fault on cold start
 
   ESP_LOGI(TAG, "Panasonic AC component v%s starting...", VERSION);
 }
