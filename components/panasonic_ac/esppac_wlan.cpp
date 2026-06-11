@@ -37,12 +37,13 @@ void PanasonicACWLAN::loop() {
       return;
     }
 
-    // Protocol-investigation RX tap: packets with the 0x3A (AC->controller) header are
-    // dropped wholesale by the normal flow (verify_packet only accepts 0x5A), so the working
-    // state machine has never processed them. Capture them for offline analysis, then drop —
-    // we do NOT feed them to handle_packet, so counters/state/TX stay byte-for-byte unchanged.
-    if (this->rx_buffer_[0] == HEADER_RX) {
-      ESP_LOGD(TAG, "Captured 0x3A packet (type 0x%02X 0x%02X, size %d)",
+    // Protocol-investigation RX tap: capture ALL packets that verify_packet() would drop
+    // (any header that is not 0x5A). 0x66=sync is the only known benign non-0x5A header;
+    // everything else (0x3A, and any other unknown header) goes to debug_unknown for offline
+    // analysis. We do NOT feed these to handle_packet — counters/state/TX unchanged.
+    if (this->rx_buffer_[0] != HEADER && this->rx_buffer_[0] != 0x66) {
+      ESP_LOGD(TAG, "Captured non-0x5A packet (header 0x%02X, type 0x%02X 0x%02X, size %d)",
+               this->rx_buffer_[0],
                this->rx_buffer_.size() > 3 ? this->rx_buffer_[2] : 0,
                this->rx_buffer_.size() > 3 ? this->rx_buffer_[3] : 0, this->rx_buffer_.size());
       update_debug_unknown(this->rx_buffer_);
