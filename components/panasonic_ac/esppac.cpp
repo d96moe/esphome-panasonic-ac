@@ -38,6 +38,13 @@ void PanasonicAC::setup() {
   this->last_packet_sent_ = millis();
 
   ESP_LOGI(TAG, "Panasonic AC component v%s starting...", VERSION);
+
+  // Publish empty initial state so HA shows "" instead of "unknown" after reboot.
+  // Real values arrive when the first matching packet is received.
+  if (this->debug_telemetry_1_text_sensor_) this->debug_telemetry_1_text_sensor_->publish_state("");
+  if (this->debug_telemetry_2_text_sensor_) this->debug_telemetry_2_text_sensor_->publish_state("");
+  if (this->debug_report_text_sensor_)      this->debug_report_text_sensor_->publish_state("");
+  if (this->debug_unknown_text_sensor_)     this->debug_unknown_text_sensor_->publish_state("");
 }
 
 void PanasonicAC::loop() {
