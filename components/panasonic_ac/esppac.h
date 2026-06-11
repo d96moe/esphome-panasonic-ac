@@ -55,6 +55,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_debug_telemetry_2_text_sensor(text_sensor::TextSensor *sensor);
   void set_debug_report_text_sensor(text_sensor::TextSensor *sensor);
   void set_debug_unknown_text_sensor(text_sensor::TextSensor *sensor);
+  void set_probe_value_text_sensor(text_sensor::TextSensor *sensor);
 
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
@@ -86,6 +87,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   text_sensor::TextSensor *debug_telemetry_2_text_sensor_ = nullptr;  // Telemetry packet bytes 125..end
   text_sensor::TextSensor *debug_report_text_sensor_ = nullptr;       // Report packet (0x10 0x0A) raw dump
   text_sensor::TextSensor *debug_unknown_text_sensor_ = nullptr;      // Otherwise-dropped/unknown packets (incl. 0x3A header)
+  text_sensor::TextSensor *probe_value_text_sensor_ = nullptr;        // Phase B: "KK:VV" hex for probed key's value in 0x89 response
   std::string debug_telemetry_1_state_;
   std::string debug_telemetry_2_state_;
   std::string debug_report_state_;
@@ -137,6 +139,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_debug_telemetry(const std::vector<uint8_t> &packet);
   void update_debug_report(const std::vector<uint8_t> &packet);
   void update_debug_unknown(const std::vector<uint8_t> &packet);
+  void update_probe_value(uint8_t key, uint8_t val);
 
   virtual void on_horizontal_swing_change(const std::string &swing) = 0;
   virtual void on_vertical_swing_change(const std::string &swing) = 0;

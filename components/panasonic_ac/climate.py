@@ -54,6 +54,7 @@ CONF_DEBUG_TELEMETRY_2 = "debug_telemetry_2"
 CONF_DEBUG_REPORT = "debug_report"
 CONF_DEBUG_UNKNOWN = "debug_unknown"
 CONF_PROBE_KEY = "probe_key"
+CONF_PROBE_VALUE = "probe_value"
 
 HORIZONTAL_SWING_OPTIONS = ["auto", "left", "left_center", "center", "right_center", "right"]
 
@@ -122,6 +123,11 @@ CONFIG_SCHEMA = cv.typed_schema(
                 # Dormant Phase B: append one extra READ key to the poll request.
                 # Omit (or set 0) for byte-identical default polling.
                 cv.Optional(CONF_PROBE_KEY): cv.hex_uint8_t,
+                # Phase B result sensor: publishes "KK:VV" hex when probe_key is found in 0x89 response.
+                # Stays empty when probe_key is 0. Fits in 255-char HA limit (6 chars).
+                cv.Optional(CONF_PROBE_VALUE): text_sensor.text_sensor_schema(
+                    icon="mdi:magnify",
+                ),
             }
         ),
         CONF_CNT: SCHEMA.extend(
@@ -216,6 +222,10 @@ async def to_code(config):
 
     if CONF_PROBE_KEY in config:
         cg.add(var.set_probe_key(config[CONF_PROBE_KEY]))
+
+    if CONF_PROBE_VALUE in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_PROBE_VALUE])
+        cg.add(var.set_probe_value_text_sensor(ts))
 
     if CONF_DEFROST_SENSOR in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])

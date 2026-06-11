@@ -45,6 +45,7 @@ void PanasonicAC::setup() {
   if (this->debug_telemetry_2_text_sensor_) this->debug_telemetry_2_text_sensor_->publish_state("");
   if (this->debug_report_text_sensor_)      this->debug_report_text_sensor_->publish_state("");
   if (this->debug_unknown_text_sensor_)     this->debug_unknown_text_sensor_->publish_state("");
+  if (this->probe_value_text_sensor_)       this->probe_value_text_sensor_->publish_state("");
 }
 
 void PanasonicAC::loop() {
@@ -391,6 +392,17 @@ void PanasonicAC::set_debug_report_text_sensor(text_sensor::TextSensor *sensor) 
 
 void PanasonicAC::set_debug_unknown_text_sensor(text_sensor::TextSensor *sensor) {
   this->debug_unknown_text_sensor_ = sensor;
+}
+
+void PanasonicAC::set_probe_value_text_sensor(text_sensor::TextSensor *sensor) {
+  this->probe_value_text_sensor_ = sensor;
+}
+
+void PanasonicAC::update_probe_value(uint8_t key, uint8_t val) {
+  if (this->probe_value_text_sensor_ == nullptr) return;
+  char buf[6];
+  snprintf(buf, sizeof(buf), "%02X:%02X", key, val);
+  this->probe_value_text_sensor_->publish_state(buf);
 }
 
 /*
