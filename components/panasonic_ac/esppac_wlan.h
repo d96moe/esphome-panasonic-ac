@@ -6,7 +6,8 @@ namespace esphome {
 namespace panasonic_ac {
 namespace WLAN {
 
-static const uint8_t HEADER = 0x5A;  // The header of the protocol, every packet starts with this
+static const uint8_t HEADER = 0x5A;     // Controller -> AC, every TX packet starts with this
+static const uint8_t HEADER_RX = 0x3A;  // AC -> Controller; some pushed packets use this (normally dropped)
 
 static const int INIT_TIMEOUT = 10000;       // Time to wait before initializing after boot
 static const int INIT_END_TIMEOUT = 10000;   // Time to wait for last handshake packet
@@ -38,7 +39,15 @@ class PanasonicACWLAN : public PanasonicAC {
   void setup() override;
   void loop() override;
 
+  // Phase B scaffolding (DORMANT): when set to a non-zero key, the poll request
+  // appends that one extra READ key so its echoed value lands in raw_packet.
+  // Default 0 => byte-identical to the original static CMD_POLL (no behavior change).
+  // Polling is a read (0x10 0x09); it never writes AC state.
+  void set_probe_key(uint8_t key) { this->probe_key_ = key; }
+
  protected:
+  uint8_t probe_key_ = 0;            // 0 = disabled, send static CMD_POLL verbatim
+  std::vector<uint8_t> poll_buffer_;  // backing store for probe poll (keeps last_command_ ptr valid for resend)
   ACState state_ = ACState::Initializing;  // Stores the internal state of the AC, used during initialization
 
   uint8_t transmit_packet_count_ = 0;  // Counter used in packet (2nd byte) when we are sending packets
@@ -56,6 +65,9 @@ class PanasonicACWLAN : public PanasonicAC {
   void handle_poll();
   bool verify_packet();
   void handle_packet();
+
+  // Builds a poll request payload from the standard 17 keys plus probe_key_ (if non-zero).
+  std::vector<uint8_t> build_poll_with_probe();
 
   void send_set_command();
   void send_command(const uint8_t *command, size_t commandLength, CommandType type = CommandType::Normal);

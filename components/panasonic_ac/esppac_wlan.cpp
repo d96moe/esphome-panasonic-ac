@@ -37,6 +37,19 @@ void PanasonicACWLAN::loop() {
       return;
     }
 
+    // Protocol-investigation RX tap: packets with the 0x3A (AC->controller) header are
+    // dropped wholesale by the normal flow (verify_packet only accepts 0x5A), so the working
+    // state machine has never processed them. Capture them for offline analysis, then drop —
+    // we do NOT feed them to handle_packet, so counters/state/TX stay byte-for-byte unchanged.
+    if (this->rx_buffer_[0] == HEADER_RX) {
+      ESP_LOGD(TAG, "Captured 0x3A packet (type 0x%02X 0x%02X, size %d)",
+               this->rx_buffer_.size() > 3 ? this->rx_buffer_[2] : 0,
+               this->rx_buffer_.size() > 3 ? this->rx_buffer_[3] : 0, this->rx_buffer_.size());
+      update_debug_unknown(this->rx_buffer_);
+      this->rx_buffer_.clear();
+      return;
+    }
+
     if (!verify_packet())  // Verify length, header, counter and checksum
       return;
 
@@ -203,8 +216,15 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
 
 void PanasonicACWLAN::handle_poll() {
   if (this->state_ == ACState::Ready && millis() - this->last_packet_sent_ > POLL_INTERVAL) {
-    ESP_LOGV(TAG, "Polling AC");
-    send_command(CMD_POLL, sizeof(CMD_POLL));
+    if (this->probe_key_ == 0) {
+      ESP_LOGV(TAG, "Polling AC");
+      send_command(CMD_POLL, sizeof(CMD_POLL));  // Default: byte-identical to original
+    } else {
+      // Phase B (dormant unless probe_key configured): poll the 17 standard keys + 1 probe key.
+      this->poll_buffer_ = build_poll_with_probe();
+      ESP_LOGD(TAG, "Polling AC with probe key 0x%02X", this->probe_key_);
+      send_command(this->poll_buffer_.data(), this->poll_buffer_.size());
+    }
   }
 }
 
@@ -424,13 +444,26 @@ void PanasonicACWLAN::handle_packet() {
   {
     ESP_LOGD(TAG, "Answering ping");
     send_command(CMD_PING, sizeof(CMD_PING), CommandType::Response);
+  } else if (this->rx_buffer_[2] == 0x11 && this->rx_buffer_[3] == 0x03)  // Periodic telemetry (push)
+  {
+    // The AC pushes this unsolicited (~160 bytes). The normal flow ignores it; we capture the
+    // raw bytes for offline analysis. Prime compressor-state candidate (not present in 0x89 poll).
+    ESP_LOGD(TAG, "Received telemetry packet (0x11 0x03, size %d)", this->rx_buffer_.size());
+    update_debug_telemetry(this->rx_buffer_);
   } else if (this->rx_buffer_[2] == 0x10 && this->rx_buffer_[3] == 0x89)  // Received query response
   {
-    ESP_LOGD(TAG, "Received query response");
+    ESP_LOGD(TAG, "Received query response (size %d)", this->rx_buffer_.size());
 
-    if (this->rx_buffer_.size() != 125) {
-      ESP_LOGW(TAG, "Received invalid query response");
+    // Relaxed from a strict ==125 check: a probe key (Phase B) or firmware variant can return
+    // a larger packet (beebop5 observed ~140). Anything >=70 carries the fixed-offset fields we
+    // parse below; extra trailing bytes are preserved in the raw_packet dump for analysis.
+    if (this->rx_buffer_.size() < 70) {
+      ESP_LOGW(TAG, "Received invalid query response - too short (size %d)", this->rx_buffer_.size());
       return;
+    }
+    if (this->rx_buffer_.size() != 125) {
+      ESP_LOGD(TAG, "Query response size %d != 125 (probe/variant); fixed offsets still parsed",
+               this->rx_buffer_.size());
     }
 
     if (this->rx_buffer_[14] == 0x31)          // Check if power state is off
@@ -483,6 +516,9 @@ void PanasonicACWLAN::handle_packet() {
   } else if (this->rx_buffer_[2] == 0x10 && this->rx_buffer_[3] == 0x0A)  // Report
   {
     ESP_LOGV(TAG, "Received report");
+    // Capture full raw report BEFORE parsing. Reports are pushed by the AC exactly when state
+    // changes (incl. compressor transitions), so this is a prime channel for new signals.
+    update_debug_report(this->rx_buffer_);
     send_command(CMD_REPORT_ACK, sizeof(CMD_REPORT_ACK), CommandType::Response);
 
     if (this->rx_buffer_.size() < 13) {
@@ -571,7 +607,9 @@ void PanasonicACWLAN::handle_packet() {
     ESP_LOGI(TAG, "Panasonic AC component v%s initialized", VERSION);
     this->state_ = ACState::Ready;
   } else {
-    ESP_LOGW(TAG, "Received unknown packet");
+    ESP_LOGW(TAG, "Received unknown packet (type 0x%02X 0x%02X, size %d)", this->rx_buffer_[2],
+             this->rx_buffer_[3], this->rx_buffer_.size());
+    update_debug_unknown(this->rx_buffer_);  // Capture for offline analysis
   }
 }
 
@@ -675,6 +713,40 @@ void PanasonicACWLAN::send_set_command() {
 
   send_packet(packet, CommandType::Normal);
   this->set_queue_index_ = 0;
+}
+
+std::vector<uint8_t> PanasonicACWLAN::build_poll_with_probe() {
+  // (key, trailing) for the 17 standard poll keys, mirroring the static CMD_POLL byte-for-byte.
+  static const uint8_t keys[][2] = {{0x80, 0x00}, {0xB0, 0x02}, {0x31, 0x00}, {0xA0, 0x00}, {0xA1, 0x00},
+                                    {0xA5, 0x00}, {0xA4, 0x00}, {0xB2, 0x02}, {0x35, 0x02}, {0x33, 0x02},
+                                    {0x34, 0x02}, {0x32, 0x00}, {0xBB, 0x00}, {0xBE, 0x02}, {0x20, 0x02},
+                                    {0x21, 0x00}, {0x86, 0x00}};
+  uint8_t count = 17 + (this->probe_key_ != 0 ? 1 : 0);
+
+  std::vector<uint8_t> p;
+  p.push_back(0x10);
+  p.push_back(0x09);
+  p.push_back(0x00);
+  p.push_back((uint8_t) (3 * count + 5));  // SIZE = bytes from idx4 through last command byte
+  p.push_back(0x01);
+  p.push_back(0x01);
+  p.push_back(0x30);
+  p.push_back(0x01);
+  p.push_back(count);  // key count
+  p.push_back(0x00);
+  for (auto &k : keys) {
+    p.push_back(k[0]);   // key
+    p.push_back(0x00);   // always 0x01 in response, 0x00 in request
+    p.push_back(k[1]);   // trailing
+  }
+  if (this->probe_key_ != 0) {
+    p.push_back(this->probe_key_);
+    p.push_back(0x00);
+    p.push_back(0x00);  // probe trailing
+  }
+  // The last key's trailing slot is supplied by the checksum that send_command appends.
+  p.pop_back();
+  return p;
 }
 
 void PanasonicACWLAN::send_command(const uint8_t *command, size_t commandLength, CommandType type) {

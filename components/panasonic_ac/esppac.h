@@ -48,6 +48,14 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor);
   void set_serial_fault_sensor(binary_sensor::BinarySensor *serial_fault_sensor);
 
+  // Protocol-investigation debug text sensors (raw hex dumps for offline analysis).
+  // Telemetry is split across two sensors because HA caps a state string at 255 chars
+  // (telemetry packets run ~160 bytes = ~320 hex chars).
+  void set_debug_telemetry_1_text_sensor(text_sensor::TextSensor *sensor);
+  void set_debug_telemetry_2_text_sensor(text_sensor::TextSensor *sensor);
+  void set_debug_report_text_sensor(text_sensor::TextSensor *sensor);
+  void set_debug_unknown_text_sensor(text_sensor::TextSensor *sensor);
+
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
 
@@ -72,6 +80,16 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   std::string raw_packet_state_;                                // Last published raw packet, to avoid duplicate publishes
   bool serial_fault_state_ = false;
   bool serial_fault_published_ = false;
+
+  // Protocol-investigation debug sensors + dedup state
+  text_sensor::TextSensor *debug_telemetry_1_text_sensor_ = nullptr;  // Telemetry packet (0x11 0x03) bytes 0..124
+  text_sensor::TextSensor *debug_telemetry_2_text_sensor_ = nullptr;  // Telemetry packet bytes 125..end
+  text_sensor::TextSensor *debug_report_text_sensor_ = nullptr;       // Report packet (0x10 0x0A) raw dump
+  text_sensor::TextSensor *debug_unknown_text_sensor_ = nullptr;      // Otherwise-dropped/unknown packets (incl. 0x3A header)
+  std::string debug_telemetry_1_state_;
+  std::string debug_telemetry_2_state_;
+  std::string debug_report_state_;
+  std::string debug_unknown_state_;
 
   std::string vertical_swing_state_;
   std::string horizontal_swing_state_;
@@ -113,6 +131,12 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_raw_packet(const std::vector<uint8_t> &packet);
   void update_defrost(bool defrost);
   void update_serial_fault(bool fault);
+
+  // Protocol-investigation debug publishers
+  static std::string hex_encode(const std::vector<uint8_t> &packet, size_t begin, size_t end);
+  void update_debug_telemetry(const std::vector<uint8_t> &packet);
+  void update_debug_report(const std::vector<uint8_t> &packet);
+  void update_debug_unknown(const std::vector<uint8_t> &packet);
 
   virtual void on_horizontal_swing_change(const std::string &swing) = 0;
   virtual void on_vertical_swing_change(const std::string &swing) = 0;

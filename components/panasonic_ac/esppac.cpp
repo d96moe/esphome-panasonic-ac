@@ -197,18 +197,59 @@ void PanasonicAC::set_raw_packet_text_sensor(text_sensor::TextSensor *sensor) {
   this->raw_packet_text_sensor_ = sensor;
 }
 
-void PanasonicAC::update_raw_packet(const std::vector<uint8_t> &packet) {
-  if (this->raw_packet_text_sensor_ == nullptr) return;
+std::string PanasonicAC::hex_encode(const std::vector<uint8_t> &packet, size_t begin, size_t end) {
   static const char hex[] = "0123456789ABCDEF";
   std::string s;
-  s.reserve(packet.size() * 2);
-  for (uint8_t b : packet) {
-    s += hex[b >> 4];
-    s += hex[b & 0x0F];
+  if (end > packet.size()) end = packet.size();
+  if (begin >= end) return s;
+  s.reserve((end - begin) * 2);
+  for (size_t i = begin; i < end; i++) {
+    s += hex[packet[i] >> 4];
+    s += hex[packet[i] & 0x0F];
   }
+  return s;
+}
+
+void PanasonicAC::update_raw_packet(const std::vector<uint8_t> &packet) {
+  if (this->raw_packet_text_sensor_ == nullptr) return;
+  std::string s = hex_encode(packet, 0, packet.size());
   if (this->raw_packet_state_ == s) return;
   this->raw_packet_state_ = s;
   this->raw_packet_text_sensor_->publish_state(s);
+}
+
+// Telemetry runs ~160 bytes; split at byte 125 to stay under HA's 255-char state cap.
+void PanasonicAC::update_debug_telemetry(const std::vector<uint8_t> &packet) {
+  if (this->debug_telemetry_1_text_sensor_ != nullptr) {
+    std::string s1 = hex_encode(packet, 0, 125);
+    if (this->debug_telemetry_1_state_ != s1) {
+      this->debug_telemetry_1_state_ = s1;
+      this->debug_telemetry_1_text_sensor_->publish_state(s1);
+    }
+  }
+  if (this->debug_telemetry_2_text_sensor_ != nullptr) {
+    std::string s2 = hex_encode(packet, 125, packet.size());
+    if (this->debug_telemetry_2_state_ != s2) {
+      this->debug_telemetry_2_state_ = s2;
+      this->debug_telemetry_2_text_sensor_->publish_state(s2);
+    }
+  }
+}
+
+void PanasonicAC::update_debug_report(const std::vector<uint8_t> &packet) {
+  if (this->debug_report_text_sensor_ == nullptr) return;
+  std::string s = hex_encode(packet, 0, packet.size());
+  if (this->debug_report_state_ == s) return;
+  this->debug_report_state_ = s;
+  this->debug_report_text_sensor_->publish_state(s);
+}
+
+void PanasonicAC::update_debug_unknown(const std::vector<uint8_t> &packet) {
+  if (this->debug_unknown_text_sensor_ == nullptr) return;
+  std::string s = hex_encode(packet, 0, packet.size());
+  if (this->debug_unknown_state_ == s) return;
+  this->debug_unknown_state_ = s;
+  this->debug_unknown_text_sensor_->publish_state(s);
 }
 
 void PanasonicAC::update_serial_fault(bool fault) {
@@ -327,6 +368,22 @@ void PanasonicAC::set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor
 
 void PanasonicAC::set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor) {
   this->error_code_text_sensor_ = error_code_text_sensor;
+}
+
+void PanasonicAC::set_debug_telemetry_1_text_sensor(text_sensor::TextSensor *sensor) {
+  this->debug_telemetry_1_text_sensor_ = sensor;
+}
+
+void PanasonicAC::set_debug_telemetry_2_text_sensor(text_sensor::TextSensor *sensor) {
+  this->debug_telemetry_2_text_sensor_ = sensor;
+}
+
+void PanasonicAC::set_debug_report_text_sensor(text_sensor::TextSensor *sensor) {
+  this->debug_report_text_sensor_ = sensor;
+}
+
+void PanasonicAC::set_debug_unknown_text_sensor(text_sensor::TextSensor *sensor) {
+  this->debug_unknown_text_sensor_ = sensor;
 }
 
 /*

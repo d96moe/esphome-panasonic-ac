@@ -48,6 +48,13 @@ CONF_SERIAL_FAULT = "serial_fault"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
+# Protocol-investigation debug sensors + dormant Phase B probe key
+CONF_DEBUG_TELEMETRY_1 = "debug_telemetry_1"
+CONF_DEBUG_TELEMETRY_2 = "debug_telemetry_2"
+CONF_DEBUG_REPORT = "debug_report"
+CONF_DEBUG_UNKNOWN = "debug_unknown"
+CONF_PROBE_KEY = "probe_key"
+
 HORIZONTAL_SWING_OPTIONS = ["auto", "left", "left_center", "center", "right_center", "right"]
 
 VERTICAL_SWING_OPTIONS = ["swing", "auto", "up", "up_center", "center", "down_center", "down"]
@@ -99,6 +106,22 @@ CONFIG_SCHEMA = cv.typed_schema(
                 cv.Optional(CONF_RAW_PACKET): text_sensor.text_sensor_schema(
                     icon="mdi:code-brackets",
                 ),
+                # Protocol-investigation debug text sensors (raw hex dumps)
+                cv.Optional(CONF_DEBUG_TELEMETRY_1): text_sensor.text_sensor_schema(
+                    icon="mdi:code-brackets",
+                ),
+                cv.Optional(CONF_DEBUG_TELEMETRY_2): text_sensor.text_sensor_schema(
+                    icon="mdi:code-brackets",
+                ),
+                cv.Optional(CONF_DEBUG_REPORT): text_sensor.text_sensor_schema(
+                    icon="mdi:code-brackets",
+                ),
+                cv.Optional(CONF_DEBUG_UNKNOWN): text_sensor.text_sensor_schema(
+                    icon="mdi:code-brackets",
+                ),
+                # Dormant Phase B: append one extra READ key to the poll request.
+                # Omit (or set 0) for byte-identical default polling.
+                cv.Optional(CONF_PROBE_KEY): cv.hex_uint8_t,
             }
         ),
         CONF_CNT: SCHEMA.extend(
@@ -174,6 +197,25 @@ async def to_code(config):
     if CONF_RAW_PACKET in config:
         ts = await text_sensor.new_text_sensor(config[CONF_RAW_PACKET])
         cg.add(var.set_raw_packet_text_sensor(ts))
+
+    if CONF_DEBUG_TELEMETRY_1 in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_DEBUG_TELEMETRY_1])
+        cg.add(var.set_debug_telemetry_1_text_sensor(ts))
+
+    if CONF_DEBUG_TELEMETRY_2 in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_DEBUG_TELEMETRY_2])
+        cg.add(var.set_debug_telemetry_2_text_sensor(ts))
+
+    if CONF_DEBUG_REPORT in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_DEBUG_REPORT])
+        cg.add(var.set_debug_report_text_sensor(ts))
+
+    if CONF_DEBUG_UNKNOWN in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_DEBUG_UNKNOWN])
+        cg.add(var.set_debug_unknown_text_sensor(ts))
+
+    if CONF_PROBE_KEY in config:
+        cg.add(var.set_probe_key(config[CONF_PROBE_KEY]))
 
     if CONF_DEFROST_SENSOR in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])

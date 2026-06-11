@@ -69,3 +69,24 @@ climate:
 
     # Useful when the ac does not report a current temperature (CZ-TACG1 only)
     # current_temperature_sensor: temperature_sensor_id
+
+    # ----------------------------------------------------------------------
+    # Protocol-investigation debug sensors (DNSK-P11 / type: wlan only).
+    # Pure RX taps that publish raw hex of packets the normal flow ignores,
+    # for offline analysis (e.g. finding the live compressor/working-mode byte).
+    # They never change what is sent to the AC. See protocol/INVESTIGATION.md.
+    # raw_packet:
+    #   name: Panasonic AC Raw Packet            # 0x89 poll response
+    # debug_telemetry_1:
+    #   name: Panasonic AC Debug Telemetry 1     # 0x11 0x03 telemetry bytes 0..124
+    # debug_telemetry_2:
+    #   name: Panasonic AC Debug Telemetry 2     # 0x11 0x03 telemetry bytes 125..end
+    # debug_report:
+    #   name: Panasonic AC Debug Report          # 0x10 0x0A report (pushed on state change)
+    # debug_unknown:
+    #   name: Panasonic AC Debug Unknown         # otherwise-dropped packets (incl. 0x3A header)
+
+    # Phase B (DORMANT): append ONE extra read key to the poll request so its
+    # echoed value lands in raw_packet. Polling is a read (never writes AC state).
+    # Activate one key at a time, under supervision. Omit for default polling.
+    # probe_key: 0x00
