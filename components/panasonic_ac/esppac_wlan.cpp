@@ -462,8 +462,8 @@ void PanasonicACWLAN::handle_packet() {
       ESP_LOGW(TAG, "Received invalid query response - too short (size %d)", this->rx_buffer_.size());
       return;
     }
-    if (this->rx_buffer_.size() != 125) {
-      ESP_LOGD(TAG, "Query response size %d != 125 (probe/variant); fixed offsets still parsed",
+    if (this->rx_buffer_.size() != 136) {
+      ESP_LOGD(TAG, "Query response size %d != 136 (expected with 0x85+0x88); fixed offsets still parsed",
                this->rx_buffer_.size());
     }
 
@@ -506,6 +506,14 @@ void PanasonicACWLAN::handle_packet() {
     masked[1] = 0x00;       // zero rolling packet counter (changes every poll)
     masked.back() = 0x00;   // zero checksum (depends on counter)
     update_raw_packet(masked);
+
+    // Key 0x85 values at bytes 127-130 (4-byte block, present in 136-byte response).
+    if (this->rx_buffer_.size() >= 131)
+      update_key_0x85(&this->rx_buffer_[127], 4);
+
+    // Key 0x88 value at byte 134 (1-byte, present in 136-byte response).
+    if (this->rx_buffer_.size() >= 135)
+      update_key_0x88(this->rx_buffer_[134]);
 
     // climate::ClimateAction action = determine_action(); // Determine the current action of the AC
     // this->action = action;
@@ -735,12 +743,12 @@ void PanasonicACWLAN::send_set_command() {
 }
 
 std::vector<uint8_t> PanasonicACWLAN::build_poll_with_probe() {
-  // (key, trailing) for the 17 standard poll keys, mirroring the static CMD_POLL byte-for-byte.
+  // (key, trailing) for the 19 standard poll keys, mirroring the static CMD_POLL byte-for-byte.
   static const uint8_t keys[][2] = {{0x80, 0x00}, {0xB0, 0x02}, {0x31, 0x00}, {0xA0, 0x00}, {0xA1, 0x00},
                                     {0xA5, 0x00}, {0xA4, 0x00}, {0xB2, 0x02}, {0x35, 0x02}, {0x33, 0x02},
                                     {0x34, 0x02}, {0x32, 0x00}, {0xBB, 0x00}, {0xBE, 0x02}, {0x20, 0x02},
-                                    {0x21, 0x00}, {0x86, 0x00}};
-  uint8_t count = 17 + (this->probe_key_ != 0 ? 1 : 0);
+                                    {0x21, 0x00}, {0x86, 0x00}, {0x85, 0x00}, {0x88, 0x00}};
+  uint8_t count = 19 + (this->probe_key_ != 0 ? 1 : 0);
 
   std::vector<uint8_t> p;
   p.push_back(0x10);

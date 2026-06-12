@@ -56,6 +56,8 @@ CONF_DEBUG_REPORT = "debug_report"
 CONF_DEBUG_UNKNOWN = "debug_unknown"
 CONF_PROBE_KEY = "probe_key"
 CONF_PROBE_VALUE = "probe_value"
+CONF_KEY_0x85 = "key_0x85"
+CONF_KEY_0x88 = "key_0x88"
 
 HORIZONTAL_SWING_OPTIONS = ["auto", "left", "left_center", "center", "right_center", "right"]
 
@@ -132,6 +134,13 @@ CONFIG_SCHEMA = cv.typed_schema(
                 # Stays empty when probe_key is 0. Fits in 255-char HA limit (6 chars).
                 cv.Optional(CONF_PROBE_VALUE): text_sensor.text_sensor_schema(
                     icon="mdi:magnify",
+                ),
+                # Always-polled undocumented keys (CMD_POLL standard since protocol-investigation Phase B).
+                cv.Optional(CONF_KEY_0x85): text_sensor.text_sensor_schema(
+                    icon="mdi:counter",
+                ),
+                cv.Optional(CONF_KEY_0x88): text_sensor.text_sensor_schema(
+                    icon="mdi:bit-array",
                 ),
             }
         ),
@@ -235,6 +244,14 @@ async def to_code(config):
     if CONF_PROBE_VALUE in config:
         ts = await text_sensor.new_text_sensor(config[CONF_PROBE_VALUE])
         cg.add(var.set_probe_value_text_sensor(ts))
+
+    if CONF_KEY_0x85 in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_KEY_0x85])
+        cg.add(var.set_key_0x85_text_sensor(ts))
+
+    if CONF_KEY_0x88 in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_KEY_0x88])
+        cg.add(var.set_key_0x88_text_sensor(ts))
 
     if CONF_DEFROST_SENSOR in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])

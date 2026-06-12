@@ -412,6 +412,14 @@ void PanasonicAC::set_probe_value_text_sensor(text_sensor::TextSensor *sensor) {
   this->probe_value_text_sensor_ = sensor;
 }
 
+void PanasonicAC::set_key_0x85_text_sensor(text_sensor::TextSensor *sensor) {
+  this->key_0x85_text_sensor_ = sensor;
+}
+
+void PanasonicAC::set_key_0x88_text_sensor(text_sensor::TextSensor *sensor) {
+  this->key_0x88_text_sensor_ = sensor;
+}
+
 // Format: "KK:VV" (len=1) or "KK:VV:VV:VV:VV" (len>1) or "KK:??" (len=0, unsupported).
 void PanasonicAC::update_probe_value(uint8_t key, const uint8_t *data, uint8_t len) {
   if (this->probe_value_text_sensor_ == nullptr) return;
@@ -425,6 +433,28 @@ void PanasonicAC::update_probe_value(uint8_t key, const uint8_t *data, uint8_t l
       pos += snprintf(buf + pos, sizeof(buf) - pos, ":%02X", data[n]);
   }
   this->probe_value_text_sensor_->publish_state(buf);
+}
+
+// 0x85: format "VV:VV:VV:VV" (4 bytes, big-endian as received).
+void PanasonicAC::update_key_0x85(const uint8_t *data, uint8_t len) {
+  if (this->key_0x85_text_sensor_ == nullptr) return;
+  char buf[12];  // "VV:VV:VV:VV" + NUL = 12 chars
+  snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X", data[0], data[1], data[2], data[3]);
+  std::string s(buf);
+  if (s == this->key_0x85_state_) return;
+  this->key_0x85_state_ = s;
+  this->key_0x85_text_sensor_->publish_state(s);
+}
+
+// 0x88: format "VV" (1 byte, hex).
+void PanasonicAC::update_key_0x88(uint8_t val) {
+  if (this->key_0x88_text_sensor_ == nullptr) return;
+  char buf[3];  // "VV" + NUL
+  snprintf(buf, sizeof(buf), "%02X", val);
+  std::string s(buf);
+  if (s == this->key_0x88_state_) return;
+  this->key_0x88_state_ = s;
+  this->key_0x88_text_sensor_->publish_state(s);
 }
 
 /*
