@@ -45,6 +45,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor);
   void set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor);
   void set_raw_packet_text_sensor(text_sensor::TextSensor *raw_packet_text_sensor);
+  void set_raw_packet_2_text_sensor(text_sensor::TextSensor *raw_packet_2_text_sensor);
   void set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor);
   void set_serial_fault_sensor(binary_sensor::BinarySensor *serial_fault_sensor);
 
@@ -74,11 +75,13 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   sensor::Sensor *current_temperature_sensor_ = nullptr;        // Sensor to use for current temperature where AC does not report
   sensor::Sensor *current_power_consumption_sensor_ = nullptr;  // Sensor to store current power consumption from queries
   text_sensor::TextSensor *error_code_text_sensor_ = nullptr;   // Text sensor for the AC error/status code (e.g. "H000" = OK)
-  text_sensor::TextSensor *raw_packet_text_sensor_ = nullptr;   // Raw 0x89 poll response as hex, for post-mortem analysis
+  text_sensor::TextSensor *raw_packet_text_sensor_ = nullptr;   // Raw 0x89 poll response bytes 0-126 as hex
+  text_sensor::TextSensor *raw_packet_2_text_sensor_ = nullptr; // Raw 0x89 poll response bytes 127+ as hex (overflow sensor)
   binary_sensor::BinarySensor *defrost_sensor_ = nullptr;       // Sensor to store defrost status
   binary_sensor::BinarySensor *serial_fault_sensor_ = nullptr;  // True when no packet received for >60s (UART freeze)
   std::string error_code_state_;                                // Last published error code, to avoid duplicate publishes
-  std::string raw_packet_state_;                                // Last published raw packet, to avoid duplicate publishes
+  std::string raw_packet_state_;                                // Last published raw_packet (bytes 0-126), dedup
+  std::string raw_packet_2_state_;                              // Last published raw_packet_2 (bytes 127+), dedup
   bool serial_fault_state_ = false;
   bool serial_fault_published_ = false;
 
@@ -139,7 +142,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_debug_telemetry(const std::vector<uint8_t> &packet);
   void update_debug_report(const std::vector<uint8_t> &packet);
   void update_debug_unknown(const std::vector<uint8_t> &packet);
-  void update_probe_value(uint8_t key, uint8_t val);
+  void update_probe_value(uint8_t key, const uint8_t *data, uint8_t len);
 
   virtual void on_horizontal_swing_change(const std::string &swing) = 0;
   virtual void on_vertical_swing_change(const std::string &swing) = 0;

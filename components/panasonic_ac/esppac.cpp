@@ -205,6 +205,10 @@ void PanasonicAC::set_raw_packet_text_sensor(text_sensor::TextSensor *sensor) {
   this->raw_packet_text_sensor_ = sensor;
 }
 
+void PanasonicAC::set_raw_packet_2_text_sensor(text_sensor::TextSensor *sensor) {
+  this->raw_packet_2_text_sensor_ = sensor;
+}
+
 std::string PanasonicAC::hex_encode(const std::vector<uint8_t> &packet, size_t begin, size_t end) {
   static const char hex[] = "0123456789ABCDEF";
   std::string s;
@@ -218,12 +222,22 @@ std::string PanasonicAC::hex_encode(const std::vector<uint8_t> &packet, size_t b
   return s;
 }
 
+// Split at byte 127: 127×2=254 chars fits in HA's 255-char state limit.
 void PanasonicAC::update_raw_packet(const std::vector<uint8_t> &packet) {
-  if (this->raw_packet_text_sensor_ == nullptr) return;
-  std::string s = hex_encode(packet, 0, packet.size());
-  if (this->raw_packet_state_ == s) return;
-  this->raw_packet_state_ = s;
-  this->raw_packet_text_sensor_->publish_state(s);
+  if (this->raw_packet_text_sensor_ != nullptr) {
+    std::string s1 = hex_encode(packet, 0, 127);
+    if (this->raw_packet_state_ != s1) {
+      this->raw_packet_state_ = s1;
+      this->raw_packet_text_sensor_->publish_state(s1);
+    }
+  }
+  if (this->raw_packet_2_text_sensor_ != nullptr) {
+    std::string s2 = hex_encode(packet, 127, packet.size());
+    if (this->raw_packet_2_state_ != s2) {
+      this->raw_packet_2_state_ = s2;
+      this->raw_packet_2_text_sensor_->publish_state(s2);
+    }
+  }
 }
 
 // Telemetry runs ~160 bytes; split at byte 125 to stay under HA's 255-char state cap.
@@ -398,10 +412,18 @@ void PanasonicAC::set_probe_value_text_sensor(text_sensor::TextSensor *sensor) {
   this->probe_value_text_sensor_ = sensor;
 }
 
-void PanasonicAC::update_probe_value(uint8_t key, uint8_t val) {
+// Format: "KK:VV" (len=1) or "KK:VV:VV:VV:VV" (len>1) or "KK:??" (len=0, unsupported).
+void PanasonicAC::update_probe_value(uint8_t key, const uint8_t *data, uint8_t len) {
   if (this->probe_value_text_sensor_ == nullptr) return;
-  char buf[6];
-  snprintf(buf, sizeof(buf), "%02X:%02X", key, val);
+  // 3 chars for "KK:" + up to 8 bytes × 3 chars each ("VV:") + NUL
+  char buf[3 + 8 * 3 + 1];
+  int pos = snprintf(buf, sizeof(buf), "%02X", key);
+  if (data == nullptr || len == 0) {
+    pos += snprintf(buf + pos, sizeof(buf) - pos, ":??");
+  } else {
+    for (uint8_t n = 0; n < len && n < 8; n++)
+      pos += snprintf(buf + pos, sizeof(buf) - pos, ":%02X", data[n]);
+  }
   this->probe_value_text_sensor_->publish_state(buf);
 }
 

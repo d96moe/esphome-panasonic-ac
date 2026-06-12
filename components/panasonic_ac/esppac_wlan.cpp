@@ -518,10 +518,10 @@ void PanasonicACWLAN::handle_packet() {
         uint8_t k   = this->rx_buffer_[i];
         uint8_t len = this->rx_buffer_[i + 1];
         if (k == this->probe_key_) {
-          if (len >= 1 && i + 2 < this->rx_buffer_.size())
-            update_probe_value(this->probe_key_, this->rx_buffer_[i + 2]);
+          if (len >= 1 && i + 2 + len <= this->rx_buffer_.size())
+            update_probe_value(this->probe_key_, &this->rx_buffer_[i + 2], len);
           else
-            update_probe_value(this->probe_key_, 0xFF);  // key exists, len=0 → unsupported
+            update_probe_value(this->probe_key_, nullptr, 0);  // key exists but len=0 → unsupported
           break;
         }
         i += (len == 0 ? 2 : len + 3);  // 2 overhead + len value bytes + 1 trailing

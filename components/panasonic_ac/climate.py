@@ -43,6 +43,7 @@ CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
 CONF_ERROR_CODE = "error_code"
 CONF_RAW_PACKET = "raw_packet"
+CONF_RAW_PACKET_2 = "raw_packet_2"
 CONF_DEFROST_SENSOR = "defrost_sensor"
 CONF_SERIAL_FAULT = "serial_fault"
 CONF_WLAN = "wlan"
@@ -105,6 +106,10 @@ CONFIG_SCHEMA = cv.typed_schema(
             {
                 cv.GenerateID(): cv.declare_id(PanasonicACWLAN),
                 cv.Optional(CONF_RAW_PACKET): text_sensor.text_sensor_schema(
+                    icon="mdi:code-brackets",
+                ),
+                # Overflow sensor: bytes 127+ of raw_packet (needed when probe packet >127 bytes)
+                cv.Optional(CONF_RAW_PACKET_2): text_sensor.text_sensor_schema(
                     icon="mdi:code-brackets",
                 ),
                 # Protocol-investigation debug text sensors (raw hex dumps)
@@ -203,6 +208,10 @@ async def to_code(config):
     if CONF_RAW_PACKET in config:
         ts = await text_sensor.new_text_sensor(config[CONF_RAW_PACKET])
         cg.add(var.set_raw_packet_text_sensor(ts))
+
+    if CONF_RAW_PACKET_2 in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_RAW_PACKET_2])
+        cg.add(var.set_raw_packet_2_text_sensor(ts))
 
     if CONF_DEBUG_TELEMETRY_1 in config:
         ts = await text_sensor.new_text_sensor(config[CONF_DEBUG_TELEMETRY_1])
