@@ -34,51 +34,61 @@ The protocol may contain calibration and service commands that could damage the 
 
 ## Tests performed and results
 
-### Full KV-key scan 0x00–0xFF (2026-06-12) — COMPLETE
+### KV-key scan (2026-06-12)
 
-All 256 possible KV-keys tested via the probe_key mechanism.
-Beyond the 17 standard keys, exactly **2 supported keys** were found:
+A systematic scan of KV-keys was performed via the probe_key mechanism,
+covering candidates in the 0x00–0xFF range (excluding the 17 already-known
+standard keys). An automated scan script was used but full coverage of all
+256 keys cannot be confirmed with certainty.
+
+Among all keys tested, exactly **2 additional supported keys** were found:
 
 | Key  | Length | Function |
 |------|--------|----------|
 | 0x85 | 4 byte | Cumulative energy counter (see below) |
 | 0x88 | 1 byte | Static config bitfield (see below) |
 
-All other keys (0x30, 0x36–0x43, 0x50–0x52, 0x60, 0x70, 0x81–0x84,
-0x87, 0xA2–0xA3, 0xA6–0xA7, 0xB1, 0xB3–0xB4, 0xBC–0xBD, 0xBF–0xC1,
-and the rest up to 0xFF) returned "not supported" (128-byte response).
+The following candidate keys were explicitly tested and returned "not supported"
+(128-byte response): 0x30, 0x36–0x43, 0x50–0x52, 0x60, 0x70, 0x81–0x84,
+0x87, 0xA2–0xA3, 0xA6–0xA7, 0xB1, 0xB3–0xB4, 0xBC–0xBD, 0xBF–0xC1.
 
 ---
 
-### Key 0x85 — Cumulative energy counter (2026-06-13)
+### Key 0x85 — Unknown cumulative counter (2026-06-13)
 
-Verified against heat/cool cycles with external Shelly 1PM power measurement.
+Observed during heat/cool cycles with external Shelly 1PM power measurement.
 
 **Byte layout (4 bytes, big-endian):**
 
 ```
-Byte 0: 0x00  — constant, high-order (unlikely to change in practice)
-Byte 1: 0x35  — constant during observation; changes approx. every 65 kWh (~monthly)
-Byte 2-3:     — 16-bit low-order counter, increments proportionally to load
+Byte 0: 0x00  — constant, high-order
+Byte 1: 0x35  — constant during observation; changes slowly over time (months?)
+Byte 2-3:     — 16-bit counter, increments faster under load
 ```
 
-**Counter rate vs. power (verified 2026-06-13):**
+**Tick rate vs. power (observed 2026-06-13):**
 
-| Power (W)   | Ticks/30s | Wh (calc)  | Wh/tick      |
-|-------------|-----------|------------|--------------|
-| 4–7 (idle)  | 1 / ~60s  | 0.07–0.17  | base minimum |
-| 130–180     | 1–2       | 1.1–1.5    | ~1.3         |
-| 570         | 5         | 4.8        | 0.96         |
-| 860–890     | 6–9       | 7.2–7.5    | ~1.0         |
-| 1290–1550   | 13        | 10.8–12.9  | ~1.0         |
+| Power (W)   | Ticks/30s |
+|-------------|-----------|
+| 4–7 (idle)  | 1 / ~60s  |
+| 130–180     | 1–2       |
+| 570         | 5         |
+| 860–890     | 6–9       |
+| 1290–1550   | 13        |
 
-**Conclusion:** During compressor operation ≈ 1 Wh per tick.
-At idle a base minimum rate persists (1 tick/min) regardless of load.
+**Observation:** The counter increments faster at higher load. However, a
+minimum tick rate persists even at near-zero idle load (1 tick/min at ~5 W),
+which is inconsistent with a pure energy counter. The true meaning is unknown.
 
-Total installation energy as of 2026-06-13: ~3,478 kWh (counter 0x003512XX).
+**Possible interpretations:**
+- **Compressor runtime/load counter** — possibly counts compressor-minutes weighted by load or frequency; the 1 tick/min baseline at idle could be a heartbeat, with faster ticking under active compressor operation
+- Cumulative energy (Wh) — correlation with power is approximate (~1 Wh/tick under compressor load), but the idle tick rate does not fit a pure energy interpretation
+- Some other load-proportional operational metric
 
-**Byte 1 (0x35) is NOT compressor frequency in Hz.** It is a frozen
-high-order byte that changes approximately monthly.
+The runtime/load counter hypothesis is considered more likely given the idle behaviour.
+
+**Counter value as of 2026-06-13:** 0x003512XX (bytes 2–3 changing).
+Byte 1 (0x35) is stable but is NOT compressor frequency in Hz.
 
 **0x85 is NOT a binary compressor on/off flag.**
 
