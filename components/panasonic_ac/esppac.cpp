@@ -77,13 +77,53 @@ void PanasonicAC::update_outside_temperature(int8_t temperature) {
   }
 }
 
+static const char *error_code_to_description(const std::string &code) {
+  if (code == "H000") return "OK";
+  if (code == "H011") return "Indoor/outdoor communication error";
+  if (code == "H012") return "Indoor/outdoor capacity mismatch";
+  if (code == "H014") return "Indoor air temperature sensor fault";
+  if (code == "H015") return "Compressor temperature sensor fault";
+  if (code == "H016") return "Low current draw - low refrigerant";
+  if (code == "H017") return "Suction pipe temperature sensor fault";
+  if (code == "H019") return "Indoor fan motor locked";
+  if (code == "H021") return "Drainage blocked or float sensor fault";
+  if (code == "H023") return "Evaporator temperature sensor N1 fault";
+  if (code == "H024") return "Evaporator temperature sensor N2 fault";
+  if (code == "H025") return "Ionizer unit or internal board fault";
+  if (code == "H026") return "Ionizer fault";
+  if (code == "H027") return "Outdoor air temperature sensor fault";
+  if (code == "H028") return "Condenser temperature sensor N1 fault";
+  if (code == "H030") return "Discharge temperature sensor fault";
+  if (code == "H032") return "Condenser outlet temperature sensor fault";
+  if (code == "H033") return "Indoor/outdoor wiring error";
+  if (code == "H034") return "Power module heatsink temperature sensor fault";
+  if (code == "H035") return "Drainage blocked or pump motor fault";
+  if (code == "H036") return "Outdoor gas pipe temperature sensor fault";
+  if (code == "H037") return "Outdoor liquid pipe temperature sensor fault";
+  if (code == "H038") return "Outdoor unit capacity mismatch";
+  if (code == "H039") return "Refrigerant and wiring circuits crossed";
+  if (code == "H041") return "Inconsistent wiring and refrigerant circuit";
+  if (code == "H050") return "Fan motor or board fault";
+  if (code == "H064") return "High pressure sensor fault";
+  if (code == "H097") return "Compressor motor fault";
+  if (code == "H098") return "High pressure protection (heat mode)";
+  if (code == "H099") return "Evaporator frozen";
+  if (code == "H990") return "UART communication error";
+  return nullptr;
+}
+
 void PanasonicAC::update_error_code(const std::string &code) {
-  if (this->error_code_text_sensor_ == nullptr)
-    return;
   if (this->error_code_state_ == code)
     return;  // Only publish on change
   this->error_code_state_ = code;
-  this->error_code_text_sensor_->publish_state(code);
+  if (this->error_code_text_sensor_ != nullptr)
+    this->error_code_text_sensor_->publish_state(code);
+  if (this->error_description_text_sensor_ != nullptr) {
+    const char *desc = error_code_to_description(code);
+    this->error_description_text_sensor_->publish_state(desc != nullptr ? desc : "Unknown: " + code);
+  }
+  if (this->error_active_sensor_ != nullptr)
+    this->error_active_sensor_->publish_state(code != "H000");
   ESP_LOGD(TAG, "AC error/status code: %s", code.c_str());
 }
 
@@ -194,22 +234,9 @@ void PanasonicAC::update_defrost(bool defrost) {
   }
 }
 
-void PanasonicAC::update_serial_fault(bool fault) {
-  if (this->serial_fault_sensor_ == nullptr) return;
-  if (this->serial_fault_published_ && this->serial_fault_state_ == fault) return;
-  this->serial_fault_published_ = true;
-  this->serial_fault_state_ = fault;
-  this->serial_fault_sensor_->publish_state(fault);
-  ESP_LOGD(TAG, "AC serial fault: %s", fault ? "true" : "false");
-}
-
 /*
  * Sensor handling
  */
-
-void PanasonicAC::set_serial_fault_sensor(binary_sensor::BinarySensor *sensor) {
-  this->serial_fault_sensor_ = sensor;
-}
 
 void PanasonicAC::set_outside_temperature_sensor(sensor::Sensor *outside_temperature_sensor) {
   this->outside_temperature_sensor_ = outside_temperature_sensor;
@@ -310,6 +337,14 @@ void PanasonicAC::set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor
 
 void PanasonicAC::set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor) {
   this->error_code_text_sensor_ = error_code_text_sensor;
+}
+
+void PanasonicAC::set_error_description_text_sensor(text_sensor::TextSensor *error_description_text_sensor) {
+  this->error_description_text_sensor_ = error_description_text_sensor;
+}
+
+void PanasonicAC::set_error_active_sensor(binary_sensor::BinarySensor *error_active_sensor) {
+  this->error_active_sensor_ = error_active_sensor;
 }
 
 /*

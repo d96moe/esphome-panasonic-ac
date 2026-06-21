@@ -1,6 +1,8 @@
 #include "esppac_cnt.h"
 #include "esppac_commands_cnt.h"
 
+#include "esphome/core/log.h"
+
 namespace esphome {
 namespace panasonic_ac {
 namespace CNT {
@@ -33,8 +35,6 @@ void PanasonicACCNT::loop() {
   }
   handle_cmd();
   handle_poll();  // Handle sending poll packets
-
-  update_serial_fault(millis() - this->last_packet_received_ > 60000);
 }
 
 /*
