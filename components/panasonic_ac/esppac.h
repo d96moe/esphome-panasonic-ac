@@ -18,10 +18,13 @@ static const uint8_t READ_TIMEOUT = 20;  // The maximum time to wait before cons
 
 static const uint8_t MIN_TEMPERATURE = 16;     // Minimum temperature as reported by Panasonic app
 static const uint8_t MAX_TEMPERATURE = 30;     // Maximum temperature as supported by Panasonic app
+static const uint8_t MIN_TEMPERATURE_HEAT_8_15 = 8;   // Minimum temperature in heat_8_15 (winter/summer house) mode
+static const uint8_t MAX_TEMPERATURE_HEAT_8_15 = 15;  // Maximum temperature in heat_8_15 mode
 static const float TEMPERATURE_STEP = 0.5;     // Steps the temperature can be set in
 static const float TEMPERATURE_TOLERANCE = 2;  // The tolerance to allow when checking the climate state
 static const uint8_t TEMPERATURE_THRESHOLD =
     100;  // Maximum temperature the AC can report before considering the temperature as invalid
+static const char *const PRESET_HEAT_8_15 = "heat_8_15";  // Custom preset name for winter/summer house mode
 
 enum class CommandType { Normal, Response, Resend };
 
@@ -68,6 +71,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   bool eco_state_ = false;       // Stores the state of eco to prevent duplicate packets
   bool econavi_state_ = false;       // Stores the state of econavi to prevent duplicate packets
   bool mild_dry_state_ = false;  // Stores the state of mild dry to prevent duplicate packets
+  bool heat_8_15_mode_ = false;  // True when AC is in heat_8_15 (winter/summer house) mode
 
   bool waiting_for_response_ = false;  // Set to true if we are waiting for a response
 

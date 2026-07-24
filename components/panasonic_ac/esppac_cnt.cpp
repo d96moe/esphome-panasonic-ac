@@ -1,6 +1,9 @@
 #include "esppac_cnt.h"
 #include "esppac_commands_cnt.h"
 
+#include "esphome/core/log.h"
+#include <algorithm>
+
 namespace esphome {
 namespace panasonic_ac {
 namespace CNT {
@@ -50,6 +53,10 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
 
   if (call.get_mode().has_value()) {
     ESP_LOGV(TAG, "Requested mode change");
+    if (this->heat_8_15_mode_) {
+      this->heat_8_15_mode_ = false;
+      this->custom_preset = {};
+    }
 
     switch (*call.get_mode()) {
       case climate::CLIMATE_MODE_COOL:
@@ -77,34 +84,42 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
   }
 
   if (call.get_target_temperature().has_value()) {
-    this->cmd[1] = *call.get_target_temperature() / TEMPERATURE_STEP;
+    float temp = *call.get_target_temperature();
+    if (this->heat_8_15_mode_) {
+      temp = std::max((float) MIN_TEMPERATURE_HEAT_8_15, std::min((float) MAX_TEMPERATURE_HEAT_8_15, temp));
+    }
+    this->cmd[1] = (uint8_t)(temp / TEMPERATURE_STEP);
   }
 
   if (call.get_fan_mode().has_value()) {
-    ESP_LOGV(TAG, "Requested fan mode change");
+    if (this->heat_8_15_mode_) {
+      ESP_LOGW(TAG, "Fan mode change rejected: heat_8_15 preset locks fan to max");
+    } else {
+      ESP_LOGV(TAG, "Requested fan mode change");
 
-    if(this->preset != climate::CLIMATE_PRESET_COMFORT)
-    {
-      ESP_LOGV(TAG, "Resetting preset");
-      this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
-    }
+      if(this->preset != climate::CLIMATE_PRESET_COMFORT)
+      {
+        ESP_LOGV(TAG, "Resetting preset");
+        this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
+      }
 
-    switch (*call.get_fan_mode()) {
-      case climate::CLIMATE_FAN_LOW:
-        this->cmd[3] = 0x30;
-        break;
-      case climate::CLIMATE_FAN_MEDIUM:
-        this->cmd[3] = 0x50;
-        break;
-      case climate::CLIMATE_FAN_HIGH:
-        this->cmd[3] = 0x70;
-        break;
-      case climate::CLIMATE_FAN_AUTO:
-        this->cmd[3] = 0xA0;
-        break;
-      default:
-        ESP_LOGV(TAG, "Unsupported mode requested");
-        break;
+      switch (*call.get_fan_mode()) {
+        case climate::CLIMATE_FAN_LOW:
+          this->cmd[3] = 0x30;
+          break;
+        case climate::CLIMATE_FAN_MEDIUM:
+          this->cmd[3] = 0x50;
+          break;
+        case climate::CLIMATE_FAN_HIGH:
+          this->cmd[3] = 0x70;
+          break;
+        case climate::CLIMATE_FAN_AUTO:
+          this->cmd[3] = 0xA0;
+          break;
+        default:
+          ESP_LOGV(TAG, "Unsupported mode requested");
+          break;
+      }
     }
 
     // std::string fanMode = *call.get_custom_fan_mode();
@@ -149,6 +164,11 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
 
   if (call.get_preset().has_value()) {
     ESP_LOGV(TAG, "Requested preset change");
+    if (this->heat_8_15_mode_) {
+      this->heat_8_15_mode_ = false;
+      this->custom_preset = {};
+      this->publish_state();  // Immediately restore normal temp range in UI
+    }
 
     switch (*call.get_preset()) {
       case climate::CLIMATE_PRESET_COMFORT:
@@ -160,18 +180,24 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
       case climate::CLIMATE_PRESET_ECO:
         this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
         break;
-
-    // std::string preset = *call.get_custom_preset();
-
-    // if (preset.compare(climate::CLIMATE_PRESET_COMFORT) == 0)
-    //   this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
-    // else if (preset.compare(climate::CLIMATE_PRESET_BOOST) == 0)
-    //   this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
-    // else if (preset.compare(climate::CLIMATE_PRESET_QUIET) == 0)
-    //   this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
-    // else
-    //   ESP_LOGV(TAG, "Unsupported preset requested");
+      default:
+        ESP_LOGV(TAG, "Unsupported preset requested");
+        break;
     }
+  }
+
+  if (call.get_custom_preset().has_value() && *call.get_custom_preset() == PRESET_HEAT_8_15) {
+    ESP_LOGD(TAG, "Setting heat_8_15 preset: HEAT + max fan + temp clamped to 8-15 C");
+    this->cmd[0] = 0x44;                     // HEAT mode + ON
+    this->cmd[3] = 0x70;                     // Max fan (level 5)
+    this->cmd[5] = (this->cmd[5] & 0xF0);   // Clear preset bits (powerful/eco)
+    float clamped_temp = std::max((float) MIN_TEMPERATURE_HEAT_8_15,
+                                  std::min((float) MAX_TEMPERATURE_HEAT_8_15, this->target_temperature));
+    this->cmd[1] = (uint8_t)(clamped_temp / TEMPERATURE_STEP);
+    this->heat_8_15_mode_ = true;
+    this->custom_preset = PRESET_HEAT_8_15;
+    this->preset = {};
+    this->publish_state();  // Immediately show 8-15 C range in UI
   }
 }
 
@@ -186,6 +212,13 @@ void PanasonicACCNT::set_data(bool set) {
   std::string horizontalSwing = determine_horizontal_swing(this->data[4]);
 
   climate::ClimatePreset preset = determine_preset(this->data[5]);
+
+  // Detect heat_8_15 (winter/summer house) mode from AC state:
+  // HEAT mode + max fan (0x70) + target temp below normal minimum (raw < 32 = temp < 16 C)
+  bool new_heat_8_15 = (this->mode == climate::CLIMATE_MODE_HEAT) &&
+                       (this->data[3] == 0x70) &&
+                       (this->data[1] < (uint8_t)(MIN_TEMPERATURE / TEMPERATURE_STEP));
+
   bool nanoex = determine_preset_nanoex(this->data[5]);
   bool eco = determine_eco(this->data[8]);
   bool econavi = determine_econavi(this->data[5]);
@@ -233,7 +266,17 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_swing_vertical(verticalSwing);
   this->update_swing_horizontal(horizontalSwing);
 
-  this->preset = preset;
+  if (new_heat_8_15) {
+    this->heat_8_15_mode_ = true;
+    this->custom_preset = PRESET_HEAT_8_15;
+    this->preset = {};
+  } else {
+    if (this->heat_8_15_mode_) {
+      this->heat_8_15_mode_ = false;
+      this->custom_preset = {};
+    }
+    this->preset = preset;
+  }
 
   this->update_nanoex(nanoex);
   this->update_eco(eco);

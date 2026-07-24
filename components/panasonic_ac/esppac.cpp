@@ -15,8 +15,13 @@ climate::ClimateTraits PanasonicAC::traits() {
       climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
   );
 
-  traits.set_visual_min_temperature(MIN_TEMPERATURE);
-  traits.set_visual_max_temperature(MAX_TEMPERATURE);
+  if (this->heat_8_15_mode_) {
+    traits.set_visual_min_temperature(MIN_TEMPERATURE_HEAT_8_15);
+    traits.set_visual_max_temperature(MAX_TEMPERATURE_HEAT_8_15);
+  } else {
+    traits.set_visual_min_temperature(MIN_TEMPERATURE);
+    traits.set_visual_max_temperature(MAX_TEMPERATURE);
+  }
   traits.set_visual_temperature_step(TEMPERATURE_STEP);
 
   traits.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL,
@@ -28,6 +33,7 @@ climate::ClimateTraits PanasonicAC::traits() {
                                     climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL});
 
   traits.set_supported_presets({climate::CLIMATE_PRESET_COMFORT, climate::CLIMATE_PRESET_BOOST, climate::CLIMATE_PRESET_ECO});
+  traits.add_supported_custom_preset(PRESET_HEAT_8_15);
 
   return traits;
 }
