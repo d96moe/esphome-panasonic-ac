@@ -1,6 +1,8 @@
 #include "esppac_wlan.h"
 #include "esppac_commands_wlan.h"
 
+#include <algorithm>
+
 namespace esphome {
 namespace panasonic_ac {
 namespace WLAN {
@@ -65,6 +67,10 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
 
   if (call.get_mode().has_value()) {
     ESP_LOGV(TAG, "Requested mode change");
+    if (this->heat_8_15_mode_) {
+      this->heat_8_15_mode_ = false;
+      this->custom_preset = {};
+    }
 
     switch (*call.get_mode()) {
       case climate::CLIMATE_MODE_COOL:
@@ -102,33 +108,40 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
 
   if (call.get_target_temperature().has_value()) {
     ESP_LOGV(TAG, "Requested temperature change");
-    set_value(0x31, *call.get_target_temperature() * 2);
+    float temp = *call.get_target_temperature();
+    if (this->heat_8_15_mode_) {
+      temp = std::max((float) MIN_TEMPERATURE_HEAT_8_15, std::min((float) MAX_TEMPERATURE_HEAT_8_15, temp));
+    }
+    set_value(0x31, (uint8_t)(temp * 2));
   }
 
   if (call.get_fan_mode().has_value()) {
-    ESP_LOGV(TAG, "Requested fan mode change");
+    if (this->heat_8_15_mode_) {
+      ESP_LOGW(TAG, "Fan mode change rejected: heat_8_15 preset locks fan to max");
+    } else {
+      ESP_LOGV(TAG, "Requested fan mode change");
 
-    
-    switch(*call.get_fan_mode()) {
-      case climate::CLIMATE_FAN_AUTO:
-        set_value(0xB2, 0x41);
-        set_value(0xA0, 0x41);
-        break;
-      case climate::CLIMATE_FAN_LOW:
-        set_value(0xB2, 0x41);
-        set_value(0xA0, 0x32);
-        break;
-      case climate::CLIMATE_FAN_MEDIUM:
-        set_value(0xB2, 0x41);
-        set_value(0xA0, 0x34);
-        break;
-      case climate::CLIMATE_FAN_HIGH:
-        set_value(0xB2, 0x41);
-        set_value(0xA0, 0x36);
-        break;
-      default:
-        ESP_LOGV(TAG, "Unsupported fan mode requested");
-        break;
+      switch(*call.get_fan_mode()) {
+        case climate::CLIMATE_FAN_AUTO:
+          set_value(0xB2, 0x41);
+          set_value(0xA0, 0x41);
+          break;
+        case climate::CLIMATE_FAN_LOW:
+          set_value(0xB2, 0x41);
+          set_value(0xA0, 0x32);
+          break;
+        case climate::CLIMATE_FAN_MEDIUM:
+          set_value(0xB2, 0x41);
+          set_value(0xA0, 0x34);
+          break;
+        case climate::CLIMATE_FAN_HIGH:
+          set_value(0xB2, 0x41);
+          set_value(0xA0, 0x36);
+          break;
+        default:
+          ESP_LOGV(TAG, "Unsupported fan mode requested");
+          break;
+      }
     }
   }
 
@@ -161,7 +174,12 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
 
   if (call.get_preset().has_value()) {
     ESP_LOGV(TAG, "Requested preset change");
-    
+    if (this->heat_8_15_mode_) {
+      this->heat_8_15_mode_ = false;
+      this->custom_preset = {};
+      this->publish_state();  // Immediately restore normal temp range in UI
+    }
+
     switch (*call.get_preset()) {
       case climate::CLIMATE_PRESET_COMFORT:
         set_value(0xB2, 0x41);
@@ -181,6 +199,21 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
       default:
         ESP_LOGV(TAG, "Unsupported preset requested");
     }
+  }
+
+  if (call.get_custom_preset().has_value() && *call.get_custom_preset() == PRESET_HEAT_8_15) {
+    ESP_LOGD(TAG, "Setting heat_8_15 preset: HEAT + max fan + temp clamped to 8-15 C");
+    set_value(0xB0, 0x43);  // HEAT mode
+    set_value(0x80, 0x30);  // Power ON
+    set_value(0xB2, 0x41);  // Normal preset (not powerful/eco)
+    set_value(0xA0, 0x36);  // Max fan (level 5)
+    float clamped_temp = std::max((float) MIN_TEMPERATURE_HEAT_8_15,
+                                  std::min((float) MAX_TEMPERATURE_HEAT_8_15, this->target_temperature));
+    set_value(0x31, (uint8_t)(clamped_temp * 2));
+    this->heat_8_15_mode_ = true;
+    this->custom_preset = PRESET_HEAT_8_15;
+    this->preset = {};
+    this->publish_state();  // Immediately show 8-15 C range in UI
   }
 
   if (this->set_queue_index_ > 0)  // Only send packet if any changes need to be made
@@ -446,7 +479,23 @@ void PanasonicACWLAN::handle_packet() {
     update_nanoex(nanoex);
 
     this->fan_mode = determine_fan_speed(this->rx_buffer_[26]);
-    this->preset = determine_preset(this->rx_buffer_[42]);
+
+    // Detect heat_8_15: HEAT + max fan (0x36 = level 5) + temp below normal minimum
+    bool new_heat_8_15 = (this->rx_buffer_[14] != 0x31) &&
+                         (this->rx_buffer_[18] == 0x43) &&
+                         (this->rx_buffer_[26] == 0x36) &&
+                         (this->rx_buffer_[22] < (uint8_t)(MIN_TEMPERATURE / TEMPERATURE_STEP));
+    if (new_heat_8_15) {
+      this->heat_8_15_mode_ = true;
+      this->custom_preset = PRESET_HEAT_8_15;
+      this->preset = {};
+    } else {
+      if (this->heat_8_15_mode_) {
+        this->heat_8_15_mode_ = false;
+        this->custom_preset = {};
+      }
+      this->preset = determine_preset(this->rx_buffer_[42]);
+    }
 
     this->swing_mode = determine_swing(this->rx_buffer_[30]);
 
@@ -489,6 +538,10 @@ void PanasonicACWLAN::handle_packet() {
             case 0x31:  // Power mode off
               ESP_LOGV(TAG, "Received power mode off");
               this->mode = climate::CLIMATE_MODE_OFF;
+              if (this->heat_8_15_mode_) {
+                this->heat_8_15_mode_ = false;
+                this->custom_preset = {};
+              }
               break;
             default:
               ESP_LOGW(TAG, "Received unknown power mode");
@@ -497,6 +550,10 @@ void PanasonicACWLAN::handle_packet() {
           break;
         case 0xB0:  // Mode
           this->mode = determine_mode(this->rx_buffer_[currentIndex + 2]);
+          if (this->heat_8_15_mode_ && this->mode != climate::CLIMATE_MODE_HEAT) {
+            this->heat_8_15_mode_ = false;
+            this->custom_preset = {};
+          }
           break;
         case 0x31:  // Target temperature
           ESP_LOGV(TAG, "Received target temperature");
@@ -505,6 +562,10 @@ void PanasonicACWLAN::handle_packet() {
         case 0xA0:  // Fan speed
           ESP_LOGV(TAG, "Received fan speed");
           this->fan_mode = determine_fan_speed(this->rx_buffer_[currentIndex + 2]);
+          if (this->heat_8_15_mode_ && this->rx_buffer_[currentIndex + 2] != 0x36) {
+            this->heat_8_15_mode_ = false;
+            this->custom_preset = {};
+          }
           break;
         case 0xB2: // Preset
           ESP_LOGV(TAG, "Received preset");
