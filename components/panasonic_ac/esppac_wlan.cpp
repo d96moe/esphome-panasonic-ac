@@ -31,6 +31,14 @@ void PanasonicACWLAN::loop() {
   {
     log_packet(this->rx_buffer_);
 
+    // Check for defrost status packet
+    if (this->rx_buffer_[0] == 0x70 && this->rx_buffer_.size() >= 15) {
+      bool defrost = (this->rx_buffer_[14] == 0x02);
+      update_defrost(defrost);
+      this->rx_buffer_.clear();
+      return;
+    }
+
     if (!verify_packet())  // Verify length, header, counter and checksum
       return;
 
@@ -498,6 +506,17 @@ void PanasonicACWLAN::handle_packet() {
     }
 
     this->swing_mode = determine_swing(this->rx_buffer_[30]);
+
+    // Error/status code: 4 ASCII chars starting at byte 84 in the query response
+    // (e.g. "H000" = no fault, "H990" = comm/fault latched). The AC reports this in
+    // every poll, so it is a fully passive fault beacon — no command needed.
+    std::string error_code;
+    for (int i = 84; i <= 87 && i < (int) this->rx_buffer_.size(); i++) {
+      uint8_t b = this->rx_buffer_[i];
+      if (b >= 0x20 && b < 0x7F)
+        error_code += (char) b;
+    }
+    update_error_code(error_code);
 
     // climate::ClimateAction action = determine_action(); // Determine the current action of the AC
     // this->action = action;

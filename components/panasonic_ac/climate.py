@@ -8,9 +8,9 @@ from esphome.const import (
 )
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import uart, climate, sensor, select, switch
+from esphome.components import uart, climate, sensor, select, switch, text_sensor, binary_sensor
 
-AUTO_LOAD = ["switch", "sensor", "select"]
+AUTO_LOAD = ["switch", "sensor", "select", "text_sensor", "binary_sensor"]
 DEPENDENCIES = ["uart"]
 
 panasonic_ac_ns = cg.esphome_ns.namespace("panasonic_ac")
@@ -41,6 +41,10 @@ CONF_ECO_SWITCH = "eco_switch"
 CONF_ECONAVI_SWITCH = "econavi_switch"
 CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
+CONF_ERROR_CODE = "error_code"
+CONF_ERROR_DESCRIPTION = "error_description"
+CONF_ERROR_ACTIVE = "error_active"
+CONF_DEFROST_SENSOR = "defrost_sensor"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
@@ -78,6 +82,18 @@ SCHEMA = climate._CLIMATE_SCHEMA.extend(
             state_class=STATE_CLASS_MEASUREMENT,
         ),
         cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
+        cv.Optional(CONF_ERROR_CODE): text_sensor.text_sensor_schema(
+            icon="mdi:alert-circle-outline",
+        ),
+        cv.Optional(CONF_ERROR_DESCRIPTION): text_sensor.text_sensor_schema(
+            icon="mdi:alert-circle-outline",
+        ),
+        cv.Optional(CONF_ERROR_ACTIVE): binary_sensor.binary_sensor_schema(
+            device_class="problem",
+        ),
+        cv.Optional(CONF_DEFROST_SENSOR): binary_sensor.binary_sensor_schema(
+            device_class="cold",
+        ),
     }
 ).extend(uart.UART_DEVICE_SCHEMA)
 
@@ -150,3 +166,19 @@ async def to_code(config):
     if CONF_CURRENT_POWER_CONSUMPTION in config:
         sens = await sensor.new_sensor(config[CONF_CURRENT_POWER_CONSUMPTION])
         cg.add(var.set_current_power_consumption_sensor(sens))
+
+    if CONF_ERROR_CODE in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_ERROR_CODE])
+        cg.add(var.set_error_code_text_sensor(ts))
+
+    if CONF_ERROR_DESCRIPTION in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_ERROR_DESCRIPTION])
+        cg.add(var.set_error_description_text_sensor(ts))
+
+    if CONF_DEFROST_SENSOR in config:
+        sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])
+        cg.add(var.set_defrost_sensor(sens))
+
+    if CONF_ERROR_ACTIVE in config:
+        sens = await binary_sensor.new_binary_sensor(config[CONF_ERROR_ACTIVE])
+        cg.add(var.set_error_active_sensor(sens))
