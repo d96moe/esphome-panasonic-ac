@@ -33,7 +33,9 @@ climate::ClimateTraits PanasonicAC::traits() {
                                     climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL});
 
   traits.set_supported_presets({climate::CLIMATE_PRESET_COMFORT, climate::CLIMATE_PRESET_BOOST, climate::CLIMATE_PRESET_ECO});
-  traits.add_supported_custom_preset(PRESET_HEAT_8_15);
+  if (this->heat_8_15_preset_enabled_) {
+    traits.set_supported_custom_presets({PRESET_HEAT_8_15});
+  }
 
   return traits;
 }
@@ -339,6 +341,10 @@ void PanasonicAC::set_current_power_consumption_sensor(sensor::Sensor *current_p
 
 void PanasonicAC::set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor) {
   this->defrost_sensor_ = defrost_sensor;
+}
+
+void PanasonicAC::set_heat_8_15_preset_enabled(bool enabled) {
+  this->heat_8_15_preset_enabled_ = enabled;
 }
 
 void PanasonicAC::set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor) {

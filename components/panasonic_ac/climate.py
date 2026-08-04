@@ -45,6 +45,7 @@ CONF_ERROR_CODE = "error_code"
 CONF_ERROR_DESCRIPTION = "error_description"
 CONF_ERROR_ACTIVE = "error_active"
 CONF_DEFROST_SENSOR = "defrost_sensor"
+CONF_HEAT_8_15_PRESET = "heat_8_15_preset"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
@@ -94,6 +95,7 @@ SCHEMA = climate._CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_DEFROST_SENSOR): binary_sensor.binary_sensor_schema(
             device_class="cold",
         ),
+        cv.Optional(CONF_HEAT_8_15_PRESET, default=False): cv.boolean,
     }
 ).extend(uart.UART_DEVICE_SCHEMA)
 
@@ -178,6 +180,8 @@ async def to_code(config):
     if CONF_DEFROST_SENSOR in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])
         cg.add(var.set_defrost_sensor(sens))
+
+    cg.add(var.set_heat_8_15_preset_enabled(config[CONF_HEAT_8_15_PRESET]))
 
     if CONF_ERROR_ACTIVE in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_ERROR_ACTIVE])

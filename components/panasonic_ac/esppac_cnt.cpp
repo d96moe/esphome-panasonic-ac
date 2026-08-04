@@ -55,7 +55,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     ESP_LOGV(TAG, "Requested mode change");
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
-      this->custom_preset = {};
+      this->clear_custom_preset_();
     }
 
     switch (*call.get_mode()) {
@@ -166,7 +166,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     ESP_LOGV(TAG, "Requested preset change");
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
-      this->custom_preset = {};
+      this->clear_custom_preset_();
       this->publish_state();  // Immediately restore normal temp range in UI
     }
 
@@ -186,7 +186,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     }
   }
 
-  if (call.get_custom_preset().has_value() && *call.get_custom_preset() == PRESET_HEAT_8_15) {
+  if (this->heat_8_15_preset_enabled_ && call.has_custom_preset() && call.get_custom_preset() == PRESET_HEAT_8_15) {
     ESP_LOGD(TAG, "Setting heat_8_15 preset: HEAT + max fan + temp clamped to 8-15 C");
     this->cmd[0] = 0x44;                     // HEAT mode + ON
     this->cmd[3] = 0x70;                     // Max fan (level 5)
@@ -195,7 +195,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
                                   std::min((float) MAX_TEMPERATURE_HEAT_8_15, this->target_temperature));
     this->cmd[1] = (uint8_t)(clamped_temp / TEMPERATURE_STEP);
     this->heat_8_15_mode_ = true;
-    this->custom_preset = PRESET_HEAT_8_15;
+    this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
     this->publish_state();  // Immediately show 8-15 C range in UI
   }
@@ -215,7 +215,8 @@ void PanasonicACCNT::set_data(bool set) {
 
   // Detect heat_8_15 (winter/summer house) mode from AC state:
   // HEAT mode + max fan (0x70) + target temp below normal minimum (raw < 32 = temp < 16 C)
-  bool new_heat_8_15 = (this->mode == climate::CLIMATE_MODE_HEAT) &&
+  bool new_heat_8_15 = this->heat_8_15_preset_enabled_ &&
+                       (this->mode == climate::CLIMATE_MODE_HEAT) &&
                        (this->data[3] == 0x70) &&
                        (this->data[1] < (uint8_t)(MIN_TEMPERATURE / TEMPERATURE_STEP));
 
@@ -276,12 +277,12 @@ void PanasonicACCNT::set_data(bool set) {
 
   if (new_heat_8_15) {
     this->heat_8_15_mode_ = true;
-    this->custom_preset = PRESET_HEAT_8_15;
+    this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
   } else {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
-      this->custom_preset = {};
+      this->clear_custom_preset_();
     }
     this->preset = preset;
   }
