@@ -41,6 +41,7 @@ CONF_ECO_SWITCH = "eco_switch"
 CONF_ECONAVI_SWITCH = "econavi_switch"
 CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
+CONF_HEAT_8_15_PRESET = "heat_8_15_preset"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
@@ -78,6 +79,7 @@ SCHEMA = climate._CLIMATE_SCHEMA.extend(
             state_class=STATE_CLASS_MEASUREMENT,
         ),
         cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
+        cv.Optional(CONF_HEAT_8_15_PRESET, default=False): cv.boolean,
     }
 ).extend(uart.UART_DEVICE_SCHEMA)
 
@@ -150,3 +152,5 @@ async def to_code(config):
     if CONF_CURRENT_POWER_CONSUMPTION in config:
         sens = await sensor.new_sensor(config[CONF_CURRENT_POWER_CONSUMPTION])
         cg.add(var.set_current_power_consumption_sensor(sens))
+
+    cg.add(var.set_heat_8_15_preset_enabled(config[CONF_HEAT_8_15_PRESET]))

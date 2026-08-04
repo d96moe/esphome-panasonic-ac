@@ -33,7 +33,9 @@ climate::ClimateTraits PanasonicAC::traits() {
                                     climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL});
 
   traits.set_supported_presets({climate::CLIMATE_PRESET_COMFORT, climate::CLIMATE_PRESET_BOOST, climate::CLIMATE_PRESET_ECO});
-  traits.add_supported_custom_preset(PRESET_HEAT_8_15);
+  if (this->heat_8_15_preset_enabled_) {
+    traits.set_supported_custom_presets({PRESET_HEAT_8_15});
+  }
 
   return traits;
 }
@@ -278,6 +280,10 @@ void PanasonicAC::set_mild_dry_switch(switch_::Switch *mild_dry_switch) {
 
 void PanasonicAC::set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor) {
   this->current_power_consumption_sensor_ = current_power_consumption_sensor;
+}
+
+void PanasonicAC::set_heat_8_15_preset_enabled(bool enabled) {
+  this->heat_8_15_preset_enabled_ = enabled;
 }
 
 /*

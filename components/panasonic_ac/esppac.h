@@ -44,6 +44,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_econavi_switch(switch_::Switch *econavi_switch);
   void set_mild_dry_switch(switch_::Switch *mild_dry_switch);
   void set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor);
+  void set_heat_8_15_preset_enabled(bool enabled);
 
   void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
   void set_current_temperature_offset(int8_t current_temperature_offset);
@@ -72,6 +73,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   bool econavi_state_ = false;       // Stores the state of econavi to prevent duplicate packets
   bool mild_dry_state_ = false;  // Stores the state of mild dry to prevent duplicate packets
   bool heat_8_15_mode_ = false;  // True when AC is in heat_8_15 (winter/summer house) mode
+  bool heat_8_15_preset_enabled_ = false;  // Whether this unit supports/should expose the heat_8_15 preset at all
 
   bool waiting_for_response_ = false;  // Set to true if we are waiting for a response
 
