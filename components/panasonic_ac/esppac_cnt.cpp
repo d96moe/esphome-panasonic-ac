@@ -235,8 +235,9 @@ void PanasonicACCNT::set_data(bool set) {
         this->update_current_temperature((int8_t)this->rx_buffer_[18]);
       else if(this->rx_buffer_[21] != 0x80)
         this->update_current_temperature((int8_t)this->rx_buffer_[21]);
-      else
+      else {
         ESP_LOGV(TAG, "Current temperature is not supported");
+      }
     }
 
     if (this->outside_temperature_sensor_ != nullptr)
@@ -245,8 +246,9 @@ void PanasonicACCNT::set_data(bool set) {
         this->update_outside_temperature((int8_t)this->rx_buffer_[19]);
       else if(this->rx_buffer_[22] != 0x80)
         this->update_outside_temperature((int8_t)this->rx_buffer_[22]);
-      else
+      else {
         ESP_LOGV(TAG, "Outside temperature is not supported");
+      }
     }
 
     if(this->current_power_consumption_sensor_ != nullptr) {

@@ -33,9 +33,6 @@ climate::ClimateTraits PanasonicAC::traits() {
                                     climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL});
 
   traits.set_supported_presets({climate::CLIMATE_PRESET_COMFORT, climate::CLIMATE_PRESET_BOOST, climate::CLIMATE_PRESET_ECO});
-  if (this->heat_8_15_preset_enabled_) {
-    traits.set_supported_custom_presets({PRESET_HEAT_8_15});
-  }
 
   return traits;
 }
@@ -45,6 +42,10 @@ void PanasonicAC::setup() {
   this->init_time_ = millis();
   this->last_packet_sent_ = millis();
   this->last_packet_received_ = millis();  // Prevent false serial_fault on cold start
+
+  if (this->heat_8_15_preset_enabled_) {
+    this->set_supported_custom_presets({PRESET_HEAT_8_15});
+  }
 
   ESP_LOGI(TAG, "Panasonic AC component v%s starting...", VERSION);
 }
