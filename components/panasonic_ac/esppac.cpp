@@ -51,6 +51,14 @@ float PanasonicAC::get_heat_8_15_exit_temperature_() const {
   return std::max((float) MIN_TEMPERATURE, std::min((float) MAX_TEMPERATURE, temp));
 }
 
+void PanasonicAC::save_pre_heat_8_15_mode_() {
+  if (this->heat_8_15_mode_)
+    return;  // Already in the mode; don't clobber the saved value with the forced HEAT mode.
+  this->pre_heat_8_15_mode_ = this->mode;
+}
+
+climate::ClimateMode PanasonicAC::get_heat_8_15_exit_mode_() const { return this->pre_heat_8_15_mode_; }
+
 void PanasonicAC::setup() {
   // Initialize times
   this->init_time_ = millis();

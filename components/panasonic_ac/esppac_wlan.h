@@ -63,6 +63,7 @@ class PanasonicACWLAN : public PanasonicAC {
 
   climate::ClimateMode determine_mode(uint8_t mode);
   climate::ClimateFanMode determine_fan_speed(uint8_t speed);
+  void set_mode_value_(climate::ClimateMode mode);
   climate::ClimatePreset determine_preset(uint8_t preset);
   std::string determine_swing_vertical(uint8_t swing);
   std::string determine_swing_horizontal(uint8_t swing);

@@ -51,6 +51,7 @@ class PanasonicACCNT : public PanasonicAC {
 
   climate::ClimateMode determine_mode(uint8_t mode);
   climate::ClimateFanMode determine_fan_speed(uint8_t speed);
+  uint8_t mode_to_cmd_byte_(climate::ClimateMode mode);
 
   std::string determine_vertical_swing(uint8_t swing);
   std::string determine_horizontal_swing(uint8_t swing);
