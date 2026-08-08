@@ -78,6 +78,7 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
+      set_value(0x31, (uint8_t)(this->get_heat_8_15_exit_temperature_() * 2));
     }
 
     switch (*call.get_mode()) {
@@ -185,6 +186,7 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
+      set_value(0x31, (uint8_t)(this->get_heat_8_15_exit_temperature_() * 2));
       this->publish_state();  // Immediately restore normal temp range in UI
     }
 
@@ -218,6 +220,7 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     float clamped_temp = std::max((float) MIN_TEMPERATURE_HEAT_8_15,
                                   std::min((float) MAX_TEMPERATURE_HEAT_8_15, this->target_temperature));
     set_value(0x31, (uint8_t)(clamped_temp * 2));
+    this->save_pre_heat_8_15_temperature_();
     this->heat_8_15_mode_ = true;
     this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
@@ -471,6 +474,11 @@ void PanasonicACWLAN::handle_packet() {
     else {
       this->mode = determine_mode(this->rx_buffer_[18]);  // Check mode if power state is not off
     }
+
+    // Capture the last known good setpoint while NOT in heat_8_15 mode, before it's
+    // overwritten below - covers the case where heat_8_15 is entered by some other
+    // controller (app/remote) rather than through our own control().
+    this->save_pre_heat_8_15_temperature_();
 
     update_target_temperature((int8_t) this->rx_buffer_[22]);
     update_current_temperature((int8_t) this->rx_buffer_[62]);
