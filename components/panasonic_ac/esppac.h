@@ -88,6 +88,7 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   bool heat_8_15_mode_ = false;  // True when AC is in heat_8_15 (winter/summer house) mode
   bool heat_8_15_preset_enabled_ = false;  // Whether this unit supports/should expose the heat_8_15 preset at all
   float pre_heat_8_15_target_temperature_ = NAN;  // Setpoint to restore when leaving heat_8_15 mode
+  climate::ClimateMode pre_heat_8_15_mode_ = climate::CLIMATE_MODE_HEAT_COOL;  // Mode to restore when leaving heat_8_15 mode
 
   bool waiting_for_response_ = false;  // Set to true if we are waiting for a response
 
@@ -112,6 +113,16 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   /// clamped to the normal range, or 21C if none was ever saved (e.g. device
   /// booted directly into heat_8_15 mode).
   float get_heat_8_15_exit_temperature_() const;
+
+  /// Saves the current hvac mode before entering heat_8_15 mode, so it can be
+  /// restored on exit. No-op if already in heat_8_15 mode (mirrors
+  /// save_pre_heat_8_15_temperature_()).
+  void save_pre_heat_8_15_mode_();
+
+  /// Mode to command when leaving heat_8_15 mode: the saved pre-mode value, or
+  /// HEAT_COOL if none was ever saved (e.g. device booted directly into
+  /// heat_8_15 mode).
+  climate::ClimateMode get_heat_8_15_exit_mode_() const;
 
   void read_data();
 

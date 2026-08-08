@@ -81,6 +81,8 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
       set_value(0x31, (uint8_t)(this->get_heat_8_15_exit_temperature_() * 2));
     }
 
+    // Mode is set explicitly below from the requested value, so no need to restore
+    // the saved pre-heat_8_15 mode here.
     switch (*call.get_mode()) {
       case climate::CLIMATE_MODE_COOL:
         set_value(0xB0, 0x42);
@@ -187,6 +189,8 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
       set_value(0x31, (uint8_t)(this->get_heat_8_15_exit_temperature_() * 2));
+      this->set_mode_value_(this->get_heat_8_15_exit_mode_());  // Restore mode active before heat_8_15
+      this->mode = this->get_heat_8_15_exit_mode_();  // Reflect immediately, same as explicit mode changes above
       this->publish_state();  // Immediately restore normal temp range in UI
     }
 
@@ -221,6 +225,7 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
                                   std::min((float) MAX_TEMPERATURE_HEAT_8_15, this->target_temperature));
     set_value(0x31, (uint8_t)(clamped_temp * 2));
     this->save_pre_heat_8_15_temperature_();
+    this->save_pre_heat_8_15_mode_();
     this->heat_8_15_mode_ = true;
     this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
@@ -336,6 +341,32 @@ bool PanasonicACWLAN::verify_packet() {
 /*
  * Field handling
  */
+
+void PanasonicACWLAN::set_mode_value_(climate::ClimateMode mode) {
+  switch (mode) {
+    case climate::CLIMATE_MODE_COOL:
+      set_value(0xB0, 0x42);
+      set_value(0x80, 0x30);
+      break;
+    case climate::CLIMATE_MODE_HEAT:
+      set_value(0xB0, 0x43);
+      set_value(0x80, 0x30);
+      break;
+    case climate::CLIMATE_MODE_DRY:
+      set_value(0xB0, 0x44);
+      set_value(0x80, 0x30);
+      break;
+    case climate::CLIMATE_MODE_FAN_ONLY:
+      set_value(0xB0, 0x45);
+      set_value(0x80, 0x30);
+      break;
+    case climate::CLIMATE_MODE_HEAT_COOL:
+    default:
+      set_value(0xB0, 0x41);
+      set_value(0x80, 0x30);
+      break;
+  }
+}
 
 climate::ClimateMode PanasonicACWLAN::determine_mode(uint8_t mode) {
   switch (mode)  // Check mode
@@ -468,6 +499,11 @@ void PanasonicACWLAN::handle_packet() {
       ESP_LOGW(TAG, "Received invalid query response");
       return;
     }
+
+    // Capture the last known good mode while NOT in heat_8_15 mode, before this->mode is
+    // overwritten below - covers the case where heat_8_15 is entered by some other
+    // controller (app/remote) rather than through our own control().
+    this->save_pre_heat_8_15_mode_();
 
     if (this->rx_buffer_[14] == 0x31)          // Check if power state is off
       this->mode = climate::CLIMATE_MODE_OFF;  // Climate is off

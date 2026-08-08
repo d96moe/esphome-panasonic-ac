@@ -59,6 +59,8 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
       this->cmd[1] = (uint8_t)(this->get_heat_8_15_exit_temperature_() / TEMPERATURE_STEP);
     }
 
+    // Mode is set explicitly below from the requested value, so no need to restore
+    // the saved pre-heat_8_15 mode here.
     switch (*call.get_mode()) {
       case climate::CLIMATE_MODE_COOL:
         this->cmd[0] = 0x34;
@@ -169,6 +171,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
       this->cmd[1] = (uint8_t)(this->get_heat_8_15_exit_temperature_() / TEMPERATURE_STEP);
+      this->cmd[0] = this->mode_to_cmd_byte_(this->get_heat_8_15_exit_mode_());  // Restore mode active before heat_8_15
       this->publish_state();  // Immediately restore normal temp range in UI
     }
 
@@ -197,6 +200,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
                                   std::min((float) MAX_TEMPERATURE_HEAT_8_15, this->target_temperature));
     this->cmd[1] = (uint8_t)(clamped_temp / TEMPERATURE_STEP);
     this->save_pre_heat_8_15_temperature_();
+    this->save_pre_heat_8_15_mode_();
     this->heat_8_15_mode_ = true;
     this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
@@ -208,6 +212,11 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
  * Set the data array to the fields
  */
 void PanasonicACCNT::set_data(bool set) {
+  // Capture the last known good mode while NOT in heat_8_15 mode, before this->mode is
+  // overwritten below - covers the case where heat_8_15 is entered by some other
+  // controller (app/remote) rather than through our own control().
+  this->save_pre_heat_8_15_mode_();
+
   this->mode = determine_mode(this->data[0]);
   this->fan_mode = determine_fan_speed(this->data[3]);
 
@@ -408,6 +417,22 @@ void PanasonicACCNT::handle_packet() {
       this->state_ = ACState::Ready;  // Mark as ready after first poll
   } else {
     ESP_LOGD(TAG, "Received unknown packet");
+  }
+}
+
+uint8_t PanasonicACCNT::mode_to_cmd_byte_(climate::ClimateMode mode) {
+  switch (mode) {
+    case climate::CLIMATE_MODE_COOL:
+      return 0x34;
+    case climate::CLIMATE_MODE_HEAT:
+      return 0x44;
+    case climate::CLIMATE_MODE_DRY:
+      return 0x24;
+    case climate::CLIMATE_MODE_FAN_ONLY:
+      return 0x64;
+    case climate::CLIMATE_MODE_HEAT_COOL:
+    default:
+      return 0x04;
   }
 }
 
