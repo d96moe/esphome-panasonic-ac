@@ -39,6 +39,18 @@ climate::ClimateTraits PanasonicAC::traits() {
   return traits;
 }
 
+void PanasonicAC::save_pre_heat_8_15_temperature_() {
+  if (this->heat_8_15_mode_)
+    return;  // Already in the mode; don't clobber the saved value with a clamped reading.
+  this->pre_heat_8_15_target_temperature_ = this->target_temperature;
+}
+
+float PanasonicAC::get_heat_8_15_exit_temperature_() const {
+  float temp = std::isnan(this->pre_heat_8_15_target_temperature_) ? 21.0f
+                                                                     : this->pre_heat_8_15_target_temperature_;
+  return std::max((float) MIN_TEMPERATURE, std::min((float) MAX_TEMPERATURE, temp));
+}
+
 void PanasonicAC::setup() {
   // Initialize times
   this->init_time_ = millis();

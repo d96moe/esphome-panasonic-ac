@@ -56,6 +56,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
+      this->cmd[1] = (uint8_t)(this->get_heat_8_15_exit_temperature_() / TEMPERATURE_STEP);
     }
 
     switch (*call.get_mode()) {
@@ -167,6 +168,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
+      this->cmd[1] = (uint8_t)(this->get_heat_8_15_exit_temperature_() / TEMPERATURE_STEP);
       this->publish_state();  // Immediately restore normal temp range in UI
     }
 
@@ -194,6 +196,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     float clamped_temp = std::max((float) MIN_TEMPERATURE_HEAT_8_15,
                                   std::min((float) MAX_TEMPERATURE_HEAT_8_15, this->target_temperature));
     this->cmd[1] = (uint8_t)(clamped_temp / TEMPERATURE_STEP);
+    this->save_pre_heat_8_15_temperature_();
     this->heat_8_15_mode_ = true;
     this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
@@ -224,7 +227,12 @@ void PanasonicACCNT::set_data(bool set) {
   bool eco = determine_eco(this->data[8]);
   bool econavi = determine_econavi(this->data[5]);
   bool mildDry = determine_mild_dry(this->data[2]);
-  
+
+  // Capture the last known good setpoint while NOT in heat_8_15 mode, before it's
+  // overwritten below - covers the case where heat_8_15 is entered by some other
+  // controller (app/remote) rather than through our own control().
+  this->save_pre_heat_8_15_temperature_();
+
   this->update_target_temperature((int8_t) this->data[1]);
 
   if (set) {
