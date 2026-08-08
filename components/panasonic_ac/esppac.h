@@ -100,11 +100,6 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
 
   climate::ClimateTraits traits() override;
 
-  /// Updates the visual min/max temperature override to reflect heat_8_15_mode_.
-  /// Unlike changing traits() (only sent once, at entity registration), this
-  /// propagates live via publish_state() so the frontend's slider bounds stay in sync.
-  void update_visual_temperature_range_();
-
   void read_data();
 
   void update_outside_temperature(int8_t temperature);

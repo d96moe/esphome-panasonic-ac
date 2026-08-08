@@ -56,7 +56,6 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
-      this->update_visual_temperature_range_();
     }
 
     switch (*call.get_mode()) {
@@ -168,7 +167,6 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
-      this->update_visual_temperature_range_();
       this->publish_state();  // Immediately restore normal temp range in UI
     }
 
@@ -199,7 +197,6 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
     this->heat_8_15_mode_ = true;
     this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
-    this->update_visual_temperature_range_();
     this->publish_state();  // Immediately show 8-15 C range in UI
   }
 }
@@ -284,12 +281,10 @@ void PanasonicACCNT::set_data(bool set) {
     this->heat_8_15_mode_ = true;
     this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
-    this->update_visual_temperature_range_();
   } else {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
-      this->update_visual_temperature_range_();
     }
     this->preset = preset;
   }

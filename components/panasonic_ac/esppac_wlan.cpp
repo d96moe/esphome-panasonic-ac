@@ -78,7 +78,6 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
-      this->update_visual_temperature_range_();
     }
 
     switch (*call.get_mode()) {
@@ -186,7 +185,6 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     if (this->heat_8_15_mode_) {
       this->heat_8_15_mode_ = false;
       this->clear_custom_preset_();
-      this->update_visual_temperature_range_();
       this->publish_state();  // Immediately restore normal temp range in UI
     }
 
@@ -223,7 +221,6 @@ void PanasonicACWLAN::control(const climate::ClimateCall &call) {
     this->heat_8_15_mode_ = true;
     this->set_custom_preset_(PRESET_HEAT_8_15);
     this->preset = {};
-    this->update_visual_temperature_range_();
     this->publish_state();  // Immediately show 8-15 C range in UI
   }
 
@@ -501,12 +498,10 @@ void PanasonicACWLAN::handle_packet() {
       this->heat_8_15_mode_ = true;
       this->set_custom_preset_(PRESET_HEAT_8_15);
       this->preset = {};
-      this->update_visual_temperature_range_();
     } else {
       if (this->heat_8_15_mode_) {
         this->heat_8_15_mode_ = false;
         this->clear_custom_preset_();
-        this->update_visual_temperature_range_();
       }
       this->preset = determine_preset(this->rx_buffer_[42]);
     }
@@ -566,7 +561,6 @@ void PanasonicACWLAN::handle_packet() {
               if (this->heat_8_15_mode_) {
                 this->heat_8_15_mode_ = false;
                 this->clear_custom_preset_();
-                this->update_visual_temperature_range_();
               }
               break;
             default:
@@ -579,7 +573,6 @@ void PanasonicACWLAN::handle_packet() {
           if (this->heat_8_15_mode_ && this->mode != climate::CLIMATE_MODE_HEAT) {
             this->heat_8_15_mode_ = false;
             this->clear_custom_preset_();
-            this->update_visual_temperature_range_();
           }
           break;
         case 0x31:  // Target temperature
@@ -592,7 +585,6 @@ void PanasonicACWLAN::handle_packet() {
           if (this->heat_8_15_mode_ && this->rx_buffer_[currentIndex + 2] != 0x36) {
             this->heat_8_15_mode_ = false;
             this->clear_custom_preset_();
-            this->update_visual_temperature_range_();
           }
           break;
         case 0xB2: // Preset
