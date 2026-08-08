@@ -115,6 +115,12 @@ async def to_code(config):
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
 
+    # Required for set_visual_min/max_temperature_override(), used to live-update the
+    # frontend's temperature slider bounds when heat_8_15 mode toggles. Normally only
+    # defined when the user has a `visual:` block in YAML; force it on unconditionally
+    # since our own code depends on it regardless of user config.
+    cg.add_define("USE_CLIMATE_VISUAL_OVERRIDES")
+
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]
         swing_select = await select.new_select(conf, options=HORIZONTAL_SWING_OPTIONS)

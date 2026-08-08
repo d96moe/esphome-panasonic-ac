@@ -15,13 +15,11 @@ climate::ClimateTraits PanasonicAC::traits() {
       climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
   );
 
-  if (this->heat_8_15_mode_) {
-    traits.set_visual_min_temperature(MIN_TEMPERATURE_HEAT_8_15);
-    traits.set_visual_max_temperature(MAX_TEMPERATURE_HEAT_8_15);
-  } else {
-    traits.set_visual_min_temperature(MIN_TEMPERATURE);
-    traits.set_visual_max_temperature(MAX_TEMPERATURE);
-  }
+  // Static baseline range; heat_8_15 mode overrides this live via
+  // update_visual_temperature_range_() / set_visual_min/max_temperature_override(),
+  // since traits() itself is only sent to the frontend once, at entity registration.
+  traits.set_visual_min_temperature(MIN_TEMPERATURE);
+  traits.set_visual_max_temperature(MAX_TEMPERATURE);
   traits.set_visual_temperature_step(TEMPERATURE_STEP);
 
   traits.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL,
@@ -35,6 +33,16 @@ climate::ClimateTraits PanasonicAC::traits() {
   traits.set_supported_presets({climate::CLIMATE_PRESET_COMFORT, climate::CLIMATE_PRESET_BOOST, climate::CLIMATE_PRESET_ECO});
 
   return traits;
+}
+
+void PanasonicAC::update_visual_temperature_range_() {
+  if (this->heat_8_15_mode_) {
+    this->set_visual_min_temperature_override(MIN_TEMPERATURE_HEAT_8_15);
+    this->set_visual_max_temperature_override(MAX_TEMPERATURE_HEAT_8_15);
+  } else {
+    this->set_visual_min_temperature_override(MIN_TEMPERATURE);
+    this->set_visual_max_temperature_override(MAX_TEMPERATURE);
+  }
 }
 
 void PanasonicAC::setup() {
