@@ -15,10 +15,14 @@ climate::ClimateTraits PanasonicAC::traits() {
       climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
   );
 
-  // Static baseline range; heat_8_15 mode overrides this live via
-  // update_visual_temperature_range_() / set_visual_min/max_temperature_override(),
-  // since traits() itself is only sent to the frontend once, at entity registration.
-  traits.set_visual_min_temperature(MIN_TEMPERATURE);
+  // Static range covering both normal (16-30C) and heat_8_15 (8-15C) modes.
+  // traits() is only sent to the frontend once, at entity registration, and per
+  // ESPHome's own API (visual_min/max_temperature live only in
+  // ListEntitiesClimateResponse, never in ClimateStateResponse) there is no supported
+  // way to update it live without a full reconnect. Widening the static range instead
+  // of narrowing it dynamically avoids a stale-bounds mismatch between HA and the AC —
+  // actual temperature clamping in heat_8_15 mode is still enforced in control()/set_data().
+  traits.set_visual_min_temperature(MIN_TEMPERATURE_HEAT_8_15);
   traits.set_visual_max_temperature(MAX_TEMPERATURE);
   traits.set_visual_temperature_step(TEMPERATURE_STEP);
 
@@ -33,16 +37,6 @@ climate::ClimateTraits PanasonicAC::traits() {
   traits.set_supported_presets({climate::CLIMATE_PRESET_COMFORT, climate::CLIMATE_PRESET_BOOST, climate::CLIMATE_PRESET_ECO});
 
   return traits;
-}
-
-void PanasonicAC::update_visual_temperature_range_() {
-  if (this->heat_8_15_mode_) {
-    this->set_visual_min_temperature_override(MIN_TEMPERATURE_HEAT_8_15);
-    this->set_visual_max_temperature_override(MAX_TEMPERATURE_HEAT_8_15);
-  } else {
-    this->set_visual_min_temperature_override(MIN_TEMPERATURE);
-    this->set_visual_max_temperature_override(MAX_TEMPERATURE);
-  }
 }
 
 void PanasonicAC::setup() {
