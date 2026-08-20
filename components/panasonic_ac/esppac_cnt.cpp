@@ -280,6 +280,25 @@ void PanasonicACCNT::set_data(bool set) {
         update_defrost(defrost);
       }
     }
+
+    // Determine the real hvac_action from the unit's own operational state byte,
+    // instead of the generic temperature-delta heuristic (determine_action()) that
+    // the WLAN protocol falls back to. Only 0x40 (heat idle) and 0x4C (heat running)
+    // are empirically confirmed on real hardware; the 0x44/0x48 heat sub-states and
+    // the whole 0x30-0x3C cool range are inferred by symmetry, not yet observed live.
+    // Any non-idle value within a mode's range is treated as actively running.
+    if (this->rx_buffer_[0] == 0x70 && this->rx_buffer_.size() >= 13) {
+      uint8_t state_byte = this->rx_buffer_[12];
+      if (state_byte == 0x00) {
+        this->action = climate::CLIMATE_ACTION_OFF;
+      } else if ((state_byte & 0xF0) == 0x40) {
+        this->action = (state_byte == 0x40) ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
+      } else if ((state_byte & 0xF0) == 0x30) {
+        this->action = (state_byte == 0x30) ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_COOLING;
+      } else {
+        this->action = climate::CLIMATE_ACTION_IDLE;  // 0x04/0x08 transient, or unrecognized value
+      }
+    }
   }
 
   if (verticalSwing == "auto" && horizontalSwing == "auto")
