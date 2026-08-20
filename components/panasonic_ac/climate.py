@@ -8,9 +8,9 @@ from esphome.const import (
 )
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import uart, climate, sensor, select, switch
+from esphome.components import uart, climate, sensor, select, switch, binary_sensor
 
-AUTO_LOAD = ["switch", "sensor", "select"]
+AUTO_LOAD = ["switch", "sensor", "select", "binary_sensor"]
 DEPENDENCIES = ["uart"]
 
 panasonic_ac_ns = cg.esphome_ns.namespace("panasonic_ac")
@@ -41,6 +41,7 @@ CONF_ECO_SWITCH = "eco_switch"
 CONF_ECONAVI_SWITCH = "econavi_switch"
 CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
+CONF_DEFROST_SENSOR = "defrost_sensor"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
 
@@ -64,22 +65,28 @@ PANASONIC_COMMON_SCHEMA = {
         device_class=DEVICE_CLASS_TEMPERATURE,
         state_class=STATE_CLASS_MEASUREMENT,
     ),
+    cv.Optional(CONF_DEFROST_SENSOR): binary_sensor.binary_sensor_schema(),
     cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
+    cv.Optional(CONF_OUTSIDE_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
+    cv.Optional(CONF_CURRENT_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
 }
 
-SCHEMA = climate._CLIMATE_SCHEMA.extend(
-    {
-        cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_OUTSIDE_TEMPERATURE): sensor.sensor_schema(
-            unit_of_measurement=UNIT_CELSIUS,
-            accuracy_decimals=0,
-            device_class=DEVICE_CLASS_TEMPERATURE,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
-    }
-).extend(uart.UART_DEVICE_SCHEMA)
+PANASONIC_CNT_SCHEMA = {
+    cv.Optional(CONF_ECO_SWITCH): SWITCH_SCHEMA,
+    cv.Optional(CONF_ECONAVI_SWITCH): SWITCH_SCHEMA,
+    cv.Optional(CONF_MILD_DRY_SWITCH): SWITCH_SCHEMA,
+    cv.Optional(CONF_CURRENT_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
+    cv.Optional(CONF_CURRENT_POWER_CONSUMPTION): sensor.sensor_schema(
+        unit_of_measurement=UNIT_WATT,
+        accuracy_decimals=0,
+        device_class=DEVICE_CLASS_POWER,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+}
+
+SCHEMA = climate._CLIMATE_SCHEMA.extend(PANASONIC_COMMON_SCHEMA).extend(
+    uart.UART_DEVICE_SCHEMA
+)
 
 CONFIG_SCHEMA = cv.typed_schema(
     {
@@ -88,19 +95,9 @@ CONFIG_SCHEMA = cv.typed_schema(
                 cv.GenerateID(): cv.declare_id(PanasonicACWLAN),
             }
         ),
-        CONF_CNT: SCHEMA.extend(
+        CONF_CNT: SCHEMA.extend(PANASONIC_CNT_SCHEMA).extend(
             {
                 cv.GenerateID(): cv.declare_id(PanasonicACCNT),
-                cv.Optional(CONF_ECO_SWITCH): SWITCH_SCHEMA,
-                cv.Optional(CONF_ECONAVI_SWITCH): SWITCH_SCHEMA,
-                cv.Optional(CONF_MILD_DRY_SWITCH): SWITCH_SCHEMA,
-                cv.Optional(CONF_CURRENT_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
-                cv.Optional(CONF_CURRENT_POWER_CONSUMPTION): sensor.sensor_schema(
-                  unit_of_measurement=UNIT_WATT,
-                  accuracy_decimals=0,
-                  device_class=DEVICE_CLASS_POWER,
-                  state_class=STATE_CLASS_MEASUREMENT,
-              ),
             }
         ),
     }
@@ -128,6 +125,10 @@ async def to_code(config):
     if CONF_OUTSIDE_TEMPERATURE in config:
         sens = await sensor.new_sensor(config[CONF_OUTSIDE_TEMPERATURE])
         cg.add(var.set_outside_temperature_sensor(sens))
+
+    if CONF_DEFROST_SENSOR in config:
+        sens = await binary_sensor.new_binary_sensor(config[CONF_DEFROST_SENSOR])
+        cg.add(var.set_defrost_sensor(sens))
 
     if CONF_OUTSIDE_TEMPERATURE_OFFSET in config:
         cg.add(var.set_outside_temperature_offset(config[CONF_OUTSIDE_TEMPERATURE_OFFSET]))
