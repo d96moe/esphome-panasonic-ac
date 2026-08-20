@@ -520,8 +520,8 @@ void PanasonicACWLAN::handle_packet() {
     update_current_temperature((int8_t) this->rx_buffer_[62]);
     update_outside_temperature((int8_t) this->rx_buffer_[66]);  // Set current (outside) temperature
 
-    std::string horizontalSwing = determine_swing_horizontal(this->rx_buffer_[34]);
-    std::string verticalSwing = determine_swing_vertical(this->rx_buffer_[38]);
+    StringRef horizontalSwing(determine_swing_horizontal(this->rx_buffer_[34]));
+    StringRef verticalSwing(determine_swing_vertical(this->rx_buffer_[38]));
 
     update_swing_horizontal(horizontalSwing);
     update_swing_vertical(verticalSwing);
@@ -642,12 +642,12 @@ void PanasonicACWLAN::handle_packet() {
         case 0xA5:  // Horizontal swing position
           ESP_LOGV(TAG, "Received horizontal swing position");
 
-          update_swing_horizontal(determine_swing_horizontal(this->rx_buffer_[currentIndex + 2]));
+          update_swing_horizontal(StringRef(determine_swing_horizontal(this->rx_buffer_[currentIndex + 2])));
           break;
         case 0xA4:  // Vertical swing position
           ESP_LOGV(TAG, "Received vertical swing position");
 
-          update_swing_vertical(determine_swing_vertical(this->rx_buffer_[currentIndex + 2]));
+          update_swing_vertical(StringRef(determine_swing_vertical(this->rx_buffer_[currentIndex + 2])));
           break;
         case 0x33:  // nanoex mode
           ESP_LOGV(TAG, "Received nanoex state");
@@ -867,7 +867,7 @@ void PanasonicACWLAN::set_value(uint8_t key, uint8_t value) {
  * Sensor handling
  */
 
-void PanasonicACWLAN::on_vertical_swing_change(const std::string &swing) {
+void PanasonicACWLAN::on_vertical_swing_change(const StringRef& swing) {
   if (this->state_ != ACState::Ready)
     return;
 
@@ -887,7 +887,7 @@ void PanasonicACWLAN::on_vertical_swing_change(const std::string &swing) {
   send_set_command();
 }
 
-void PanasonicACWLAN::on_horizontal_swing_change(const std::string &swing) {
+void PanasonicACWLAN::on_horizontal_swing_change(const StringRef &swing) {
   if (this->state_ != ACState::Ready)
     return;
 
