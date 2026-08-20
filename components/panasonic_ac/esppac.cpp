@@ -251,7 +251,7 @@ void PanasonicAC::set_outside_temperature_offset(int8_t outside_temperature_offs
   this->outside_temperature_offset_ = outside_temperature_offset;
 
   if (this->outside_temperature_sensor_) {
-    ESP_LOGV(TAG, "Corrected outside temperature: %d", this->outside_temperature_sensor_->state + outside_temperature_offset);
+    ESP_LOGV(TAG, "Corrected outside temperature: %.1f", this->outside_temperature_sensor_->state + outside_temperature_offset);
   }
 }
 
@@ -261,7 +261,7 @@ void PanasonicAC::set_current_temperature_offset(int8_t current_temperature_offs
   this->current_temperature_offset_ = current_temperature_offset;
 
   if (this->current_temperature_sensor_) {
-    ESP_LOGV(TAG, "Corrected current temperature: %d", this->current_temperature_sensor_->state + current_temperature_offset);
+    ESP_LOGV(TAG, "Corrected current temperature: %.1f", this->current_temperature_sensor_->state + current_temperature_offset);
   }
 }
 
