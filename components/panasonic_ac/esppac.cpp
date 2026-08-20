@@ -37,6 +37,9 @@ void PanasonicAC::setup() {
   this->init_time_ = millis();
   this->last_packet_sent_ = millis();
 
+  this->set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
+  this->set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
+
   ESP_LOGI(TAG, "Panasonic AC component v%s starting...", VERSION);
 }
 
@@ -105,22 +108,23 @@ void PanasonicAC::update_target_temperature(uint8_t raw_value) {
   ESP_LOGV(TAG, "Target temperature incl. offset: %.2f", temperature);
 }
 
-void PanasonicAC::update_swing_horizontal(const std::string &swing) {
-  this->horizontal_swing_state_ = swing;
+void PanasonicAC::update_swing_horizontal(const StringRef &swing) {
+  if (this->horizontal_swing_select_ != nullptr) {
+    this->horizontal_swing_state_ = this->horizontal_swing_select_->index_of(swing).value_or(~0UL);
 
-  if (this->horizontal_swing_select_ != nullptr &&
-      this->horizontal_swing_state_.compare(this->horizontal_swing_select_->current_option())) {
-    this->horizontal_swing_select_->publish_state(
-        this->horizontal_swing_state_);  // Set current horizontal swing position
+    if (this->horizontal_swing_state_ != this->horizontal_swing_select_->active_index().value_or(~0UL)) {
+      this->horizontal_swing_select_->publish_state(this->horizontal_swing_state_);  // Set current horizontal swing position
+    }
   }
 }
 
-void PanasonicAC::update_swing_vertical(const std::string &swing) {
-  this->vertical_swing_state_ = swing;
+void PanasonicAC::update_swing_vertical(const StringRef &swing) {
+  if (this->vertical_swing_select_ != nullptr) {
+    this->vertical_swing_state_ = this->vertical_swing_select_->index_of(swing).value_or(~0UL);
 
-  if (this->vertical_swing_select_ != nullptr &&
-      this->vertical_swing_state_.compare(this->vertical_swing_select_->current_option())) {
-    this->vertical_swing_select_->publish_state(this->vertical_swing_state_);  // Set current vertical swing position
+    if (this->vertical_swing_state_ != this->vertical_swing_select_->active_index().value_or(~0UL)) {
+      this->vertical_swing_select_->publish_state(this->vertical_swing_state_);  // Set current vertical swing position
+    }
   }
 }
 
@@ -177,6 +181,12 @@ void PanasonicAC::update_current_power_consumption(int16_t power) {
   }
 }
 
+void PanasonicAC::update_defrost(bool defrost) {
+  if (this->defrost_sensor_ != nullptr) {
+    this->defrost_sensor_->publish_state(defrost);
+  }
+}
+
 /*
  * Sensor handling
  */
@@ -217,20 +227,18 @@ void PanasonicAC::set_current_temperature_sensor(sensor::Sensor *current_tempera
 void PanasonicAC::set_vertical_swing_select(select::Select *vertical_swing_select) {
   this->vertical_swing_select_ = vertical_swing_select;
   this->vertical_swing_select_->add_on_state_callback([this](size_t index) {
-    std::string value = this->vertical_swing_select_->at(index).value();
-    if (value == this->vertical_swing_state_)
+    if (index == this->vertical_swing_state_)
       return;
-    this->on_vertical_swing_change(value);
+    this->on_vertical_swing_change(this->vertical_swing_select_->current_option());
   });
 }
 
 void PanasonicAC::set_horizontal_swing_select(select::Select *horizontal_swing_select) {
   this->horizontal_swing_select_ = horizontal_swing_select;
   this->horizontal_swing_select_->add_on_state_callback([this](size_t index) {
-    std::string value = this->horizontal_swing_select_->at(index).value();
-    if (value == this->horizontal_swing_state_)
+    if (index == this->horizontal_swing_state_)
       return;
-    this->on_horizontal_swing_change(value);
+    this->on_horizontal_swing_change(this->horizontal_swing_select_->current_option());
   });
 }
 
@@ -272,6 +280,10 @@ void PanasonicAC::set_mild_dry_switch(switch_::Switch *mild_dry_switch) {
 
 void PanasonicAC::set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor) {
   this->current_power_consumption_sensor_ = current_power_consumption_sensor;
+}
+
+void PanasonicAC::set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor) {
+  this->defrost_sensor_ = defrost_sensor;
 }
 
 /*
