@@ -44,6 +44,8 @@ climate:
       name: Panasonic AC Vertical Swing Mode
     outside_temperature:
       name: Panasonic AC Outside Temperature
+    defrost_sensor:
+      name: Panasonic AC Defrost Status
 
     # DNSK-P11 only: exposes the AC error/status code (e.g. "H000" = OK).
     # Reported in every poll → passive fault detection without sending commands.

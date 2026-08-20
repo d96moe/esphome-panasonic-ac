@@ -1,0 +1,83 @@
+// =============================================================================
+// Jenkinsfile.sync — Sync fork from DomiStyle/esphome-panasonic-ac upstream.
+// Runs weekly (Monday 04:00, offset from the versatile_thermostat sync job).
+//
+// Two-stage sync:
+//   1. Merge upstream/master into this fork's own master (fast, usually clean).
+//   2. Merge the freshly-synced master into each deployed feature branch
+//      (error-code-sensor, heat-8-15-and-error-code, cnt-action-from-state-byte).
+//      Each feature branch is isolated: a conflict in one does not block the
+//      others. Any branch that conflicts is left untouched (merge aborted) and
+//      reported at the end — the build fails so it surfaces on the Jenkins
+//      dashboard, but only the branches that actually need manual attention.
+//
+// No release/tag step: ESPHome's external_components pulls directly from the
+// branch HEAD (source: github://d96moe/esphome-panasonic-ac@<branch>), so
+// there's nothing to package — a successful push here is immediately live for
+// the next ESPHome compile.
+// =============================================================================
+
+pipeline {
+    agent { label 'built-in' }
+
+    triggers {
+        cron('0 4 * * 1')  // Weekly Monday 04:00
+    }
+
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 15, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Sync master + feature branches') {
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                    sh '''
+                        set -e
+                        rm -rf repo
+                        git clone https://github.com/d96moe/esphome-panasonic-ac.git repo
+                        cd repo
+                        git config user.email "jenkins@d96moe.local"
+                        git config user.name "Jenkins CI"
+                        git remote add upstream https://github.com/DomiStyle/esphome-panasonic-ac.git
+                        git fetch upstream
+                        git fetch origin
+
+                        echo "=== Syncing master ==="
+                        git checkout master
+                        git merge upstream/master -m "Merge upstream DomiStyle/master into master"
+                        git push https://x-access-token:${GH_TOKEN}@github.com/d96moe/esphome-panasonic-ac.git master
+                        echo "master synced: $(git log -1 --oneline)"
+
+                        FAILED_BRANCHES=""
+                        for branch in error-code-sensor heat-8-15-and-error-code cnt-action-from-state-byte; do
+                            echo "=== Syncing $branch ==="
+                            git checkout "$branch"
+                            if git merge master -m "Merge master into $branch (upstream sync)"; then
+                                git push https://x-access-token:${GH_TOKEN}@github.com/d96moe/esphome-panasonic-ac.git "$branch"
+                                echo "$branch synced: $(git log -1 --oneline)"
+                            else
+                                echo "!!! Merge conflict in $branch - aborting merge, needs manual resolution !!!"
+                                git merge --abort
+                                FAILED_BRANCHES="$FAILED_BRANCHES $branch"
+                            fi
+                        done
+
+                        if [ -n "$FAILED_BRANCHES" ]; then
+                            echo "=== Branches needing manual attention:$FAILED_BRANCHES ==="
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Sync failed - either the master sync itself errored, or one or more feature branches have a merge conflict needing manual resolution. Check the console log for which branch(es) — successfully-synced branches before the failure point were still pushed.'
+        }
+    }
+}

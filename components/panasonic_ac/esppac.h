@@ -70,8 +70,8 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   binary_sensor::BinarySensor *defrost_sensor_ = nullptr;              // Sensor to store defrost status
   std::string error_code_state_;                                       // Last published error code, to avoid duplicate publishes
 
-  std::string vertical_swing_state_;
-  std::string horizontal_swing_state_;
+  size_t vertical_swing_state_;
+  size_t horizontal_swing_state_;
 
   int8_t current_temperature_offset_ = 0;  // current temperature offset to compensate internal sensor values
   int8_t outside_temperature_offset_ = 0;  // outside temperature offset to compensate internal sensor values
@@ -99,8 +99,8 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_outside_temperature(int8_t temperature);
   void update_current_temperature(int8_t temperature);
   void update_target_temperature(uint8_t raw_value);
-  void update_swing_horizontal(const std::string &swing);
-  void update_swing_vertical(const std::string &swing);
+  void update_swing_horizontal(const StringRef &swing);
+  void update_swing_vertical(const StringRef &swing);
   void update_nanoex(bool nanoex);
   void update_eco(bool eco);
   void update_econavi(bool econavi);
@@ -109,8 +109,8 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void update_error_code(const std::string &code);
   void update_defrost(bool defrost);
 
-  virtual void on_horizontal_swing_change(const std::string &swing) = 0;
-  virtual void on_vertical_swing_change(const std::string &swing) = 0;
+  virtual void on_horizontal_swing_change(const StringRef &swing) = 0;
+  virtual void on_vertical_swing_change(const StringRef &swing) = 0;
   virtual void on_nanoex_change(bool nanoex) = 0;
   virtual void on_eco_change(bool eco) = 0;
   virtual void on_econavi_change(bool econavi) = 0;

@@ -85,8 +85,7 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
   if (call.get_fan_mode().has_value()) {
     ESP_LOGV(TAG, "Requested fan mode change");
 
-    if(this->preset != climate::CLIMATE_PRESET_COMFORT)
-    {
+    if (this->preset != climate::CLIMATE_PRESET_COMFORT) {
       ESP_LOGV(TAG, "Resetting preset");
       this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
     }
@@ -108,23 +107,6 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
         ESP_LOGV(TAG, "Unsupported mode requested");
         break;
     }
-
-    // std::string fanMode = *call.get_custom_fan_mode();
-
-    // if (fanMode == climate::CLIMATE_FAN_AUTO)
-    //   this->cmd[3] = 0xA0;
-    // else if (fanMode == climate::CLIMATE_FAN_LOW)
-    //   this->cmd[3] = 0x30;
-    // else if (fanMode == "2")
-    //   this->cmd[3] = 0x40;
-    // else if (fanMode == climate::CLIMATE_FAN_MEDIUM)
-    //   this->cmd[3] = 0x50;
-    // else if (fanMode == "4")
-    //   this->cmd[3] = 0x60;
-    // else if (fanMode == climate::CLIMATE_FAN_HIGH)
-    //   this->cmd[3] = 0x70;
-    // else
-    //   ESP_LOGV(TAG, "Unsupported fan mode requested");
   }
 
   if (call.get_swing_mode().has_value()) {
@@ -162,17 +144,9 @@ void PanasonicACCNT::control(const climate::ClimateCall &call) {
       case climate::CLIMATE_PRESET_ECO:
         this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
         break;
-
-    // std::string preset = *call.get_custom_preset();
-
-    // if (preset.compare(climate::CLIMATE_PRESET_COMFORT) == 0)
-    //   this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear right nib for normal mode
-    // else if (preset.compare(climate::CLIMATE_PRESET_BOOST) == 0)
-    //   this->cmd[5] = (this->cmd[5] & 0xF0) + 0x02;  // Clear right nib and set powerful mode
-    // else if (preset.compare(climate::CLIMATE_PRESET_QUIET) == 0)
-    //   this->cmd[5] = (this->cmd[5] & 0xF0) + 0x04;  // Clear right nib and set quiet mode
-    // else
-    //   ESP_LOGV(TAG, "Unsupported preset requested");
+      default:
+        ESP_LOGV(TAG, "Unsupported preset requested");
+        break;
     }
   }
 }
@@ -184,8 +158,8 @@ void PanasonicACCNT::set_data(bool set) {
   this->mode = determine_mode(this->data[0]);
   this->fan_mode = determine_fan_speed(this->data[3]);
 
-  std::string verticalSwing = determine_vertical_swing(this->data[4]);
-  std::string horizontalSwing = determine_horizontal_swing(this->data[4]);
+  StringRef verticalSwing(determine_vertical_swing(this->data[4]));
+  StringRef horizontalSwing(determine_horizontal_swing(this->data[4]));
 
   climate::ClimatePreset preset = determine_preset(this->data[5]);
   bool nanoex = determine_preset_nanoex(this->data[5]);
@@ -222,11 +196,12 @@ void PanasonicACCNT::set_data(bool set) {
       this->update_current_power_consumption(power_consumption);
     }
 
-    // Check for defrost status packet
     if (this->defrost_sensor_ != nullptr) {
-      if (this->rx_buffer_[0] == 0x70 && this->rx_buffer_.size() >= 15) {
+      if (this->rx_buffer_.size() >= 15) {
         bool defrost = (this->rx_buffer_[14] == 0x02);
         update_defrost(defrost);
+      } else {
+        ESP_LOGV(TAG, "Defrost status is not supported");
       }
     }
 
@@ -236,7 +211,7 @@ void PanasonicACCNT::set_data(bool set) {
     // are empirically confirmed on real hardware; the 0x44/0x48 heat sub-states and
     // the whole 0x30-0x3C cool range are inferred by symmetry, not yet observed live.
     // Any non-idle value within a mode's range is treated as actively running.
-    if (this->rx_buffer_[0] == 0x70 && this->rx_buffer_.size() >= 13) {
+    if (this->rx_buffer_.size() >= 13) {
       uint8_t state_byte = this->rx_buffer_[12];
       if (state_byte == 0x00) {
         this->action = climate::CLIMATE_ACTION_OFF;
@@ -268,6 +243,7 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_eco(eco);
   this->update_econavi(econavi);
   this->update_mild_dry(mildDry);
+  this->action = this->determine_action();
 }
 
 /*
@@ -544,7 +520,7 @@ uint16_t PanasonicACCNT::determine_power_consumption(uint8_t byte_28, uint8_t by
  * Sensor handling
  */
 
-void PanasonicACCNT::on_vertical_swing_change(const std::string &swing) {
+void PanasonicACCNT::on_vertical_swing_change(const StringRef &swing) {
   if (this->state_ != ACState::Ready)
     return;
 
@@ -576,7 +552,7 @@ void PanasonicACCNT::on_vertical_swing_change(const std::string &swing) {
 
 }
 
-void PanasonicACCNT::on_horizontal_swing_change(const std::string &swing) {
+void PanasonicACCNT::on_horizontal_swing_change(const StringRef &swing) {
   if (this->state_ != ACState::Ready)
     return;
 
