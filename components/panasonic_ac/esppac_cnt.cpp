@@ -408,7 +408,6 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_eco(eco);
   this->update_econavi(econavi);
   this->update_mild_dry(mildDry);
-  this->action = this->determine_action();
 }
 
 /*
