@@ -196,10 +196,11 @@ void PanasonicACCNT::set_data(bool set) {
       this->update_current_power_consumption(power_consumption);
     }
 
+    bool is_defrosting = this->rx_buffer_.size() >= 15 && this->rx_buffer_[14] == 0x02;
+
     if (this->defrost_sensor_ != nullptr) {
       if (this->rx_buffer_.size() >= 15) {
-        bool defrost = (this->rx_buffer_[14] == 0x02);
-        update_defrost(defrost);
+        update_defrost(is_defrosting);
       } else {
         ESP_LOGV(TAG, "Defrost status is not supported");
       }
@@ -211,9 +212,14 @@ void PanasonicACCNT::set_data(bool set) {
     // are empirically confirmed on real hardware; the 0x44/0x48 heat sub-states and
     // the whole 0x30-0x3C cool range are inferred by symmetry, not yet observed live.
     // Any non-idle value within a mode's range is treated as actively running.
+    // Defrost takes priority over the state-byte mapping: the unit reports itself
+    // as heating (0x4x) while defrosting, but ESPHome/HA has a dedicated action for
+    // this, independent of whether defrost_sensor is configured.
     if (this->rx_buffer_.size() >= 13) {
       uint8_t state_byte = this->rx_buffer_[12];
-      if (state_byte == 0x00) {
+      if (is_defrosting) {
+        this->action = climate::CLIMATE_ACTION_DEFROSTING;
+      } else if (state_byte == 0x00) {
         this->action = climate::CLIMATE_ACTION_OFF;
       } else if ((state_byte & 0xF0) == 0x40) {
         this->action = (state_byte == 0x40) ? climate::CLIMATE_ACTION_IDLE : climate::CLIMATE_ACTION_HEATING;
