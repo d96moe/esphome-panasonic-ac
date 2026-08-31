@@ -15,14 +15,17 @@ climate::ClimateTraits PanasonicAC::traits() {
       climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
   );
 
-  // Static range covering both normal (16-30C) and heat_8_15 (8-15C) modes.
-  // traits() is only sent to the frontend once, at entity registration, and per
-  // ESPHome's own API (visual_min/max_temperature live only in
+  // Static range covering both normal (16-30C) and heat_8_15 (8-15C) modes, but
+  // only widened when heat_8_15_preset is actually enabled - units that never opt
+  // into the preset have no reason to expose an 8-15C range at all, and a
+  // permanently widened slider there would just make invalid low setpoints look
+  // valid. traits() is only sent to the frontend once, at entity registration, and
+  // per ESPHome's own API (visual_min/max_temperature live only in
   // ListEntitiesClimateResponse, never in ClimateStateResponse) there is no supported
   // way to update it live without a full reconnect. Widening the static range instead
   // of narrowing it dynamically avoids a stale-bounds mismatch between HA and the AC —
   // actual temperature clamping in heat_8_15 mode is still enforced in control()/set_data().
-  traits.set_visual_min_temperature(MIN_TEMPERATURE_HEAT_8_15);
+  traits.set_visual_min_temperature(this->heat_8_15_preset_enabled_ ? MIN_TEMPERATURE_HEAT_8_15 : MIN_TEMPERATURE);
   traits.set_visual_max_temperature(MAX_TEMPERATURE);
   traits.set_visual_temperature_step(TEMPERATURE_STEP);
 
