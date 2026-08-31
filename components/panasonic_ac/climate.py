@@ -1,6 +1,7 @@
 from esphome.const import (
     DEVICE_CLASS_TEMPERATURE,
     DEVICE_CLASS_POWER,
+    ENTITY_CATEGORY_DIAGNOSTIC,
     STATE_CLASS_MEASUREMENT,
     UNIT_CELSIUS,
     UNIT_WATT,
@@ -66,9 +67,13 @@ PANASONIC_COMMON_SCHEMA = {
     cv.Optional(CONF_DEFROST_SENSOR): binary_sensor.binary_sensor_schema(),
     # Only known to be readable on the WLAN protocol (DNSK-P11) - opt-in, not
     # exposed by default, so CNT setups aren't affected.
-    cv.Optional(CONF_ERROR_CODE): text_sensor.text_sensor_schema().extend(
+    cv.Optional(CONF_ERROR_CODE): text_sensor.text_sensor_schema(
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+    ).extend(
         {
-            cv.Optional(CONF_ERROR_DESCRIPTION): text_sensor.text_sensor_schema(),
+            cv.Optional(CONF_ERROR_DESCRIPTION): text_sensor.text_sensor_schema(
+                entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            ),
         }
     ),
     cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
