@@ -31,7 +31,7 @@ what was actually found/fixed/tested on these specific units.
 
 | Location | Indoor | Outdoor | Protocol | ESPHome device |
 |---|---|---|---|---|
-| Livingroom | CS-NZ25VKE | CU-NZ25VKE | WLAN (built-in factory WiFi, DNSK-P11) | `espthings-hvac-lroom` |
+| Livingroom | CS-NZ25VKE | CU-NZ25VKE | WLAN (built-in factory WiFi, DNSK-P11, replaced by ESP) | `espthings-hvac-lroom` |
 | Hallway | CS-LZ25TKE | CU-LZ25TKE | CNT (older unit) | `espthings-hvac-hallway` |
 | Cabin | CS-CZ25ZKE | CU-CZ25ZKE | CNT (much newer) + built-in factory WiFi (Comfort Cloud, unused by ESPHome, runs in parallel) | `espthings-hvac-cabin` |
 
