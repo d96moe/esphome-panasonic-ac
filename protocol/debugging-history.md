@@ -18,7 +18,7 @@ what was actually found/fixed/tested on these specific units.
 | WLAN error/fault codes | ✅ Working (0x89 response, ASCII, e.g. "H099") |
 | CNT error/fault codes | ❌ Unknown — no byte identified. Detection tooling deployed to catch it live next time (anomaly_sensor, uart debug, mode-mismatch check) |
 | CNT humidity (byte 20) | ❌ Not real on these units — constant `0xFF` on both hallway and cabin |
-| CNT coil/room temp (byte 21) | ⚠️ Disputed — "coil temp" vs "duplicate of byte 18", not fully confirmed |
+| CNT coil temp (byte 21) | ✅ Likely coil temp, not a duplicate — hallway has no room sensor (byte 18 permanently unsupported) yet byte 21 still reports valid data |
 | CNT slot mechanism (byte 31-33) | ⚠️ Model-dependent — cabin (new) implements it, hallway (old) doesn't |
 | `determine_action()` overwrite bug | ✅ Fixed 2026-08-31 (was silently discarding byte-12 hvac_action on every deployed branch since 2026-08-20) |
 | `traits()` unconditional 8-30°C range | ✅ Fixed 2026-08-31 (now only widens when `heat_8_15_preset: true`) |
@@ -124,9 +124,9 @@ Matches DomiStyle's own original `protocol/query.txt`, which labels this byte
 physical humidity sensor, and `0xFF` is a not-populated placeholder. Reported
 upstream: https://github.com/ssjoholm/panasonic-cn-cnt/pull/1
 
-### Byte 21 — coil temp, or a duplicate of byte 18? Not fully resolved
+### Byte 21 — coil temp, not a duplicate of byte 18
 
-Two disagreeing sources:
+Two disagreeing sources on what byte 21 is:
 - **DomiStyle's own `query.txt`**: labels it "Current temperature" (i.e. a
   backup/duplicate of byte 18) — one captured sample packet showed identical
   values for both.
@@ -135,11 +135,19 @@ Two disagreeing sources:
   identical — would explain DomiStyle's single sample if captured at idle,
   when coil ≈ room temp).
 
-A live divergence between byte 18 and 21 was observed on the cabin unit
-(favors the coil-temp theory — true duplicates shouldn't diverge). Exposed as
-`coil_temperature_sensor` on that basis, not fully confirmed either way.
-Relevant to the still-open defrost/icing investigation (indoor coil temp may
-be a leading indicator of outdoor coil icing).
+Two lines of evidence now favor ssjoholm's reading pretty strongly:
+1. A live divergence between byte 18 and 21 was observed on the cabin unit —
+   true duplicates shouldn't diverge.
+2. **Hallway's byte 18 is *permanently* `0x80` (unsupported)** — this unit
+   apparently has no room-air sensor at all, only reports byte 21. If byte 21
+   were merely a backup copy of byte 18, it wouldn't make sense for it to keep
+   returning valid data on a unit where the thing it's supposedly backing up
+   never exists in the first place. Only makes sense if byte 21 measures
+   something else (the coil) entirely independently.
+
+Exposed as `coil_temperature_sensor`. Relevant to the still-open defrost/icing
+investigation (indoor coil temp may be a leading indicator of outdoor coil
+icing).
 
 ### Byte 31-33 — multiplexed slot, model-dependent implementation
 
