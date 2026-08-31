@@ -50,16 +50,31 @@ class PanasonicACCNT : public PanasonicAC {
   // Bytes documented as static/reserved/unknown in the CN-CNT protocol
   // (https://github.com/ssjoholm/panasonic-cn-cnt) - byte 8 "Reserved (always
   // 0x00)", byte 9 "unknown flag, static", bytes 16-17 "model-specific" but
-  // constant per unit, bytes 31-33 "multiplexed status/identifiers" of
-  // unclear meaning. None of these are known to ever change during normal
+  // constant per unit. None of these are known to ever change during normal
   // operation, which makes them plausible places for a fault/error flag we
   // haven't identified yet - so instead of decoding them, we just remember
   // whatever value each one first shows up as and flag it the moment any of
   // them (or an unrecognized byte 12/14 value) deviates from that baseline.
+  //
+  // Bytes 31-33 are handled separately, NOT via this same baseline mechanism:
+  // byte 31 is a multiplexed "slot selector" that legitimately rotates between
+  // three documented values (0x80 unit/model id, 0xC0 NanoE-X status, 0xC1
+  // series id) on every packet - byte 32/33 change *with* it as part of normal
+  // operation. Baselining them as if they were static produced a false
+  // positive (0xC0 00 00 = "Slot 2, NanoE-X off", a fully documented, expected
+  // pattern) the first time this shipped. Only an unrecognized byte 31 value
+  // (a slot ID never seen in the documented protocol) is treated as anomalous.
   text_sensor::TextSensor *anomaly_sensor_ = nullptr;
   bool anomaly_baseline_set_ = false;
   uint8_t baseline_byte8_ = 0, baseline_byte9_ = 0, baseline_byte16_ = 0, baseline_byte17_ = 0;
-  uint8_t baseline_byte31_ = 0, baseline_byte32_ = 0, baseline_byte33_ = 0;
+
+  // Behavioral fault signal, independent of decoding any specific byte: if the
+  // AC stops acknowledging commands (a fault-locked unit may just ignore mode
+  // changes), the reported mode/power byte will stay stuck away from whatever
+  // we last commanded for far longer than the AC's normal reaction time.
+  uint8_t last_commanded_mode_byte_ = 0;
+  uint32_t mode_mismatch_since_ms_ = 0;
+  static const uint32_t MODE_MISMATCH_THRESHOLD_MS = 5 * 60 * 1000;  // 5 min - normal transitions can be slow
 
   void check_for_anomaly();
 

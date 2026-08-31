@@ -353,7 +353,7 @@ void PanasonicACCNT::check_for_anomaly() {
 
   uint8_t b8 = this->rx_buffer_[8], b9 = this->rx_buffer_[9];
   uint8_t b16 = this->rx_buffer_[16], b17 = this->rx_buffer_[17];
-  uint8_t b31 = this->rx_buffer_[31], b32 = this->rx_buffer_[32], b33 = this->rx_buffer_[33];
+  uint8_t b31 = this->rx_buffer_[31];
   uint8_t b12 = this->rx_buffer_[12];
   uint8_t b14 = this->rx_buffer_[14];
 
@@ -362,9 +362,6 @@ void PanasonicACCNT::check_for_anomaly() {
     this->baseline_byte9_ = b9;
     this->baseline_byte16_ = b16;
     this->baseline_byte17_ = b17;
-    this->baseline_byte31_ = b31;
-    this->baseline_byte32_ = b32;
-    this->baseline_byte33_ = b33;
     this->anomaly_baseline_set_ = true;
     return;
   }
@@ -372,10 +369,32 @@ void PanasonicACCNT::check_for_anomaly() {
   bool known_b12 = b12 == 0x00 || b12 == 0x30 || b12 == 0x38 || b12 == 0x3C || b12 == 0x40 || b12 == 0x44 ||
                     b12 == 0x48 || b12 == 0x4C;
   bool known_b14 = b14 == 0x00 || b14 == 0x02;
+  // Slot selector - byte 32/33 legitimately vary depending on which slot this
+  // is (unit id / NanoE-X status / series id), so only the selector itself is
+  // checked against the documented set of valid slots.
+  bool known_b31 = b31 == 0x80 || b31 == 0xC0 || b31 == 0xC1;
 
   bool anomaly = b8 != this->baseline_byte8_ || b9 != this->baseline_byte9_ || b16 != this->baseline_byte16_ ||
-                 b17 != this->baseline_byte17_ || b31 != this->baseline_byte31_ || b32 != this->baseline_byte32_ ||
-                 b33 != this->baseline_byte33_ || !known_b12 || !known_b14;
+                 b17 != this->baseline_byte17_ || !known_b12 || !known_b14 || !known_b31;
+
+  // Behavioral check: if a fault-locked unit just ignores commands, the
+  // reported mode/power byte (data[0], == rx_buffer_[2]) will stay stuck away
+  // from whatever we last commanded far longer than a normal transition
+  // takes. last_commanded_mode_byte_ == 0 means nothing sent yet (e.g. just
+  // booted) - skip until we've actually commanded something.
+  if (this->last_commanded_mode_byte_ != 0) {
+    if (this->data[0] != this->last_commanded_mode_byte_) {
+      if (this->mode_mismatch_since_ms_ == 0)
+        this->mode_mismatch_since_ms_ = millis();
+      else if (millis() - this->mode_mismatch_since_ms_ > MODE_MISMATCH_THRESHOLD_MS) {
+        ESP_LOGW(TAG, "AC not acknowledging commands: commanded 0x%02X, still reporting 0x%02X after %us",
+                 this->last_commanded_mode_byte_, this->data[0], (millis() - this->mode_mismatch_since_ms_) / 1000);
+        anomaly = true;
+      }
+    } else {
+      this->mode_mismatch_since_ms_ = 0;
+    }
+  }
 
   if (!anomaly)
     return;
@@ -434,6 +453,7 @@ void PanasonicACCNT::handle_poll() {
 void PanasonicACCNT::handle_cmd() {
   if (!this->cmd.empty() && millis() - this->last_packet_sent_ > CMD_INTERVAL) {
     ESP_LOGV(TAG, "Sending Command");
+    this->last_commanded_mode_byte_ = this->cmd[0];
     send_command(this->cmd, CommandType::Normal, CTRL_HEADER);
     this->cmd.clear();
   }
