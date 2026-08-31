@@ -353,7 +353,6 @@ void PanasonicACCNT::check_for_anomaly() {
 
   uint8_t b8 = this->rx_buffer_[8], b9 = this->rx_buffer_[9];
   uint8_t b16 = this->rx_buffer_[16], b17 = this->rx_buffer_[17];
-  uint8_t b31 = this->rx_buffer_[31];
   uint8_t b12 = this->rx_buffer_[12];
   uint8_t b14 = this->rx_buffer_[14];
 
@@ -369,13 +368,16 @@ void PanasonicACCNT::check_for_anomaly() {
   bool known_b12 = b12 == 0x00 || b12 == 0x30 || b12 == 0x38 || b12 == 0x3C || b12 == 0x40 || b12 == 0x44 ||
                     b12 == 0x48 || b12 == 0x4C;
   bool known_b14 = b14 == 0x00 || b14 == 0x02;
-  // Slot selector - byte 32/33 legitimately vary depending on which slot this
-  // is (unit id / NanoE-X status / series id), so only the selector itself is
-  // checked against the documented set of valid slots.
-  bool known_b31 = b31 == 0x80 || b31 == 0xC0 || b31 == 0xC1;
 
+  // Byte 31 (slot selector) intentionally NOT checked here anymore: on real
+  // hardware (hallway unit) it fired on every single packet, either stuck on
+  // a value outside the three documented slots (0x80/0xC0/0xC1) or not
+  // rotating through slots the way ssjoholm's tested units did - the
+  // documented slot behavior doesn't hold for this model/unit. Needs fresh
+  // data (a clean capture of what it actually does here) before re-adding
+  // any check on it.
   bool anomaly = b8 != this->baseline_byte8_ || b9 != this->baseline_byte9_ || b16 != this->baseline_byte16_ ||
-                 b17 != this->baseline_byte17_ || !known_b12 || !known_b14 || !known_b31;
+                 b17 != this->baseline_byte17_ || !known_b12 || !known_b14;
 
   // Behavioral check: if a fault-locked unit just ignores commands, the
   // reported mode/power byte (data[0], == rx_buffer_[2]) will stay stuck away
