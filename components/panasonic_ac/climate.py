@@ -3,6 +3,7 @@ from esphome.const import (
     DEVICE_CLASS_TEMPERATURE,
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_HUMIDITY,
+    ENTITY_CATEGORY_DIAGNOSTIC,
     STATE_CLASS_MEASUREMENT,
     UNIT_CELSIUS,
     UNIT_WATT,
@@ -84,10 +85,12 @@ PANASONIC_COMMON_SCHEMA = {
     # nested since it's meaningless without error_code enabled too.
     cv.Optional(CONF_ERROR_CODE): text_sensor.text_sensor_schema(
         icon="mdi:alert-circle-outline",
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
     ).extend(
         {
             cv.Optional(CONF_ERROR_DESCRIPTION): text_sensor.text_sensor_schema(
                 icon="mdi:alert-circle-outline",
+                entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
             ),
         }
     ),
