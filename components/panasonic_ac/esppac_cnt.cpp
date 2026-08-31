@@ -255,6 +255,22 @@ void PanasonicACCNT::set_data(bool set) {
       this->update_current_power_consumption(power_consumption);
     }
 
+    // Byte 20: indoor humidity % at the AC's air intake, 0x80 = unsupported.
+    if (this->humidity_sensor_ != nullptr && this->rx_buffer_.size() >= 21) {
+      if (this->rx_buffer_[20] != 0x80)
+        this->humidity_sensor_->publish_state(this->rx_buffer_[20]);
+      else
+        ESP_LOGV(TAG, "Humidity is not supported");
+    }
+
+    // Byte 21: indoor coil/piping temperature, 0x80 = unsupported.
+    if (this->coil_temperature_sensor_ != nullptr && this->rx_buffer_.size() >= 22) {
+      if (this->rx_buffer_[21] != 0x80)
+        this->coil_temperature_sensor_->publish_state((int8_t) this->rx_buffer_[21]);
+      else
+        ESP_LOGV(TAG, "Coil temperature is not supported");
+    }
+
     bool is_defrosting = this->rx_buffer_.size() >= 15 && this->rx_buffer_[14] == 0x02;
 
     if (this->defrost_sensor_ != nullptr) {

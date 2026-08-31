@@ -32,8 +32,21 @@ class PanasonicACCNT : public PanasonicAC {
   void loop() override;
 
   void set_anomaly_sensor(text_sensor::TextSensor *anomaly_sensor) { this->anomaly_sensor_ = anomaly_sensor; }
+  void set_humidity_sensor(sensor::Sensor *humidity_sensor) { this->humidity_sensor_ = humidity_sensor; }
+  void set_coil_temperature_sensor(sensor::Sensor *coil_temperature_sensor) {
+    this->coil_temperature_sensor_ = coil_temperature_sensor;
+  }
 
  protected:
+  // Byte 20: relative humidity, 0-100, 0x80 = unavailable.
+  sensor::Sensor *humidity_sensor_ = nullptr;
+  // Byte 21: unclear - DomiStyle's own protocol notes label it a duplicate of
+  // byte 18 (current/room temperature), but a live divergence from byte 18
+  // has been observed on real hardware, which a plain duplicate shouldn't
+  // show. Named "coil" per the alternate theory (indoor coil/piping temp,
+  // https://github.com/ssjoholm/panasonic-cn-cnt) until confirmed either way.
+  sensor::Sensor *coil_temperature_sensor_ = nullptr;
+
   // Bytes documented as static/reserved/unknown in the CN-CNT protocol
   // (https://github.com/ssjoholm/panasonic-cn-cnt) - byte 8 "Reserved (always
   // 0x00)", byte 9 "unknown flag, static", bytes 16-17 "model-specific" but

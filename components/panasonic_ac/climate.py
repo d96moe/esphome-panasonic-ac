@@ -2,9 +2,11 @@ from esphome.const import (
     CONF_ID,
     DEVICE_CLASS_TEMPERATURE,
     DEVICE_CLASS_POWER,
+    DEVICE_CLASS_HUMIDITY,
     STATE_CLASS_MEASUREMENT,
     UNIT_CELSIUS,
     UNIT_WATT,
+    UNIT_PERCENT,
 )
 import esphome.codegen as cg
 import esphome.config_validation as cv
@@ -46,6 +48,8 @@ CONF_ERROR_DESCRIPTION = "error_description"
 CONF_ERROR_ACTIVE = "error_active"
 CONF_DEFROST_SENSOR = "defrost_sensor"
 CONF_ANOMALY_SENSOR = "anomaly_sensor"
+CONF_HUMIDITY_SENSOR = "humidity_sensor"
+CONF_COIL_TEMPERATURE_SENSOR = "coil_temperature_sensor"
 CONF_HEAT_8_15_PRESET = "heat_8_15_preset"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
@@ -91,6 +95,18 @@ PANASONIC_COMMON_SCHEMA = {
 PANASONIC_CNT_SCHEMA = {
     cv.Optional(CONF_ANOMALY_SENSOR): text_sensor.text_sensor_schema(
         icon="mdi:alert-decagram-outline",
+    ),
+    cv.Optional(CONF_HUMIDITY_SENSOR): sensor.sensor_schema(
+        unit_of_measurement=UNIT_PERCENT,
+        accuracy_decimals=0,
+        device_class=DEVICE_CLASS_HUMIDITY,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_COIL_TEMPERATURE_SENSOR): sensor.sensor_schema(
+        unit_of_measurement=UNIT_CELSIUS,
+        accuracy_decimals=0,
+        device_class=DEVICE_CLASS_TEMPERATURE,
+        state_class=STATE_CLASS_MEASUREMENT,
     ),
     cv.Optional(CONF_ECO_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_ECONAVI_SWITCH): SWITCH_SCHEMA,
@@ -189,3 +205,11 @@ async def to_code(config):
     if CONF_ANOMALY_SENSOR in config:
         ts = await text_sensor.new_text_sensor(config[CONF_ANOMALY_SENSOR])
         cg.add(var.set_anomaly_sensor(ts))
+
+    if CONF_HUMIDITY_SENSOR in config:
+        sens = await sensor.new_sensor(config[CONF_HUMIDITY_SENSOR])
+        cg.add(var.set_humidity_sensor(sens))
+
+    if CONF_COIL_TEMPERATURE_SENSOR in config:
+        sens = await sensor.new_sensor(config[CONF_COIL_TEMPERATURE_SENSOR])
+        cg.add(var.set_coil_temperature_sensor(sens))
