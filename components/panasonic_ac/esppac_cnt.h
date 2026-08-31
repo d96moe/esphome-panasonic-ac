@@ -31,7 +31,25 @@ class PanasonicACCNT : public PanasonicAC {
   void setup() override;
   void loop() override;
 
+  void set_anomaly_sensor(text_sensor::TextSensor *anomaly_sensor) { this->anomaly_sensor_ = anomaly_sensor; }
+
  protected:
+  // Bytes documented as static/reserved/unknown in the CN-CNT protocol
+  // (https://github.com/ssjoholm/panasonic-cn-cnt) - byte 8 "Reserved (always
+  // 0x00)", byte 9 "unknown flag, static", bytes 16-17 "model-specific" but
+  // constant per unit, bytes 31-33 "multiplexed status/identifiers" of
+  // unclear meaning. None of these are known to ever change during normal
+  // operation, which makes them plausible places for a fault/error flag we
+  // haven't identified yet - so instead of decoding them, we just remember
+  // whatever value each one first shows up as and flag it the moment any of
+  // them (or an unrecognized byte 12/14 value) deviates from that baseline.
+  text_sensor::TextSensor *anomaly_sensor_ = nullptr;
+  bool anomaly_baseline_set_ = false;
+  uint8_t baseline_byte8_ = 0, baseline_byte9_ = 0, baseline_byte16_ = 0, baseline_byte17_ = 0;
+  uint8_t baseline_byte31_ = 0, baseline_byte32_ = 0, baseline_byte33_ = 0;
+
+  void check_for_anomaly();
+
   ACState state_ = ACState::Initializing;  // Stores the internal state of the AC, used during initialization
 
   // uint8_t data[10];

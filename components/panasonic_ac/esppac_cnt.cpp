@@ -288,6 +288,9 @@ void PanasonicACCNT::set_data(bool set) {
         this->action = climate::CLIMATE_ACTION_IDLE;  // 0x04/0x08 transient, or unrecognized value
       }
     }
+
+    if (this->anomaly_sensor_ != nullptr)
+      check_for_anomaly();
   }
 
   if (verticalSwing == "auto" && horizontalSwing == "auto")
@@ -318,6 +321,56 @@ void PanasonicACCNT::set_data(bool set) {
   this->update_eco(eco);
   this->update_econavi(econavi);
   this->update_mild_dry(mildDry);
+}
+
+/*
+ * Flag the first time any of the documented-static/reserved bytes (8, 9,
+ * 16, 17, 31-33), or byte 12/14 outside their currently-mapped values,
+ * deviate from what this unit has shown since boot. Publishes a full hex
+ * dump of the packet so an unexplained fault (e.g. an error code with no
+ * known byte yet) leaves something to reverse-engineer from, without
+ * spamming the sensor on every regular packet.
+ */
+void PanasonicACCNT::check_for_anomaly() {
+  if (this->rx_buffer_.size() < 34)
+    return;  // Too short to contain all candidate bytes
+
+  uint8_t b8 = this->rx_buffer_[8], b9 = this->rx_buffer_[9];
+  uint8_t b16 = this->rx_buffer_[16], b17 = this->rx_buffer_[17];
+  uint8_t b31 = this->rx_buffer_[31], b32 = this->rx_buffer_[32], b33 = this->rx_buffer_[33];
+  uint8_t b12 = this->rx_buffer_[12];
+  uint8_t b14 = this->rx_buffer_[14];
+
+  if (!this->anomaly_baseline_set_) {
+    this->baseline_byte8_ = b8;
+    this->baseline_byte9_ = b9;
+    this->baseline_byte16_ = b16;
+    this->baseline_byte17_ = b17;
+    this->baseline_byte31_ = b31;
+    this->baseline_byte32_ = b32;
+    this->baseline_byte33_ = b33;
+    this->anomaly_baseline_set_ = true;
+    return;
+  }
+
+  bool known_b12 = b12 == 0x00 || b12 == 0x30 || b12 == 0x38 || b12 == 0x3C || b12 == 0x40 || b12 == 0x44 ||
+                    b12 == 0x48 || b12 == 0x4C;
+  bool known_b14 = b14 == 0x00 || b14 == 0x02;
+
+  bool anomaly = b8 != this->baseline_byte8_ || b9 != this->baseline_byte9_ || b16 != this->baseline_byte16_ ||
+                 b17 != this->baseline_byte17_ || b31 != this->baseline_byte31_ || b32 != this->baseline_byte32_ ||
+                 b33 != this->baseline_byte33_ || !known_b12 || !known_b14;
+
+  if (!anomaly)
+    return;
+
+  char hex[BUFFER_SIZE * 3 + 1];
+  size_t pos = 0;
+  for (size_t i = 0; i < this->rx_buffer_.size() && pos + 3 < sizeof(hex); i++)
+    pos += sprintf(hex + pos, "%02X ", this->rx_buffer_[i]);
+
+  ESP_LOGW(TAG, "Anomaly in static/known bytes, dumping packet: %s", hex);
+  this->anomaly_sensor_->publish_state(std::string(hex));
 }
 
 /*

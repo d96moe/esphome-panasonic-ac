@@ -45,6 +45,7 @@ CONF_ERROR_CODE = "error_code"
 CONF_ERROR_DESCRIPTION = "error_description"
 CONF_ERROR_ACTIVE = "error_active"
 CONF_DEFROST_SENSOR = "defrost_sensor"
+CONF_ANOMALY_SENSOR = "anomaly_sensor"
 CONF_HEAT_8_15_PRESET = "heat_8_15_preset"
 CONF_WLAN = "wlan"
 CONF_CNT = "cnt"
@@ -88,6 +89,9 @@ PANASONIC_COMMON_SCHEMA = {
 }
 
 PANASONIC_CNT_SCHEMA = {
+    cv.Optional(CONF_ANOMALY_SENSOR): text_sensor.text_sensor_schema(
+        icon="mdi:alert-decagram-outline",
+    ),
     cv.Optional(CONF_ECO_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_ECONAVI_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_MILD_DRY_SWITCH): SWITCH_SCHEMA,
@@ -181,3 +185,7 @@ async def to_code(config):
     if CONF_ERROR_ACTIVE in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_ERROR_ACTIVE])
         cg.add(var.set_error_active_sensor(sens))
+
+    if CONF_ANOMALY_SENSOR in config:
+        ts = await text_sensor.new_text_sensor(config[CONF_ANOMALY_SENSOR])
+        cg.add(var.set_anomaly_sensor(ts))
