@@ -45,7 +45,6 @@ CONF_MILD_DRY_SWITCH = "mild_dry_switch"
 CONF_CURRENT_POWER_CONSUMPTION = "current_power_consumption"
 CONF_ERROR_CODE = "error_code"
 CONF_ERROR_DESCRIPTION = "error_description"
-CONF_ERROR_ACTIVE = "error_active"
 CONF_DEFROST_SENSOR = "defrost_sensor"
 CONF_ANOMALY_SENSOR = "anomaly_sensor"
 CONF_HUMIDITY_SENSOR = "humidity_sensor"
@@ -80,14 +79,17 @@ PANASONIC_COMMON_SCHEMA = {
     cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
     cv.Optional(CONF_OUTSIDE_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
     cv.Optional(CONF_CURRENT_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
+    # Only known to be readable on the WLAN protocol (DNSK-P11) - opt-in, not
+    # exposed by default, so CNT setups aren't affected. error_description is
+    # nested since it's meaningless without error_code enabled too.
     cv.Optional(CONF_ERROR_CODE): text_sensor.text_sensor_schema(
         icon="mdi:alert-circle-outline",
-    ),
-    cv.Optional(CONF_ERROR_DESCRIPTION): text_sensor.text_sensor_schema(
-        icon="mdi:alert-circle-outline",
-    ),
-    cv.Optional(CONF_ERROR_ACTIVE): binary_sensor.binary_sensor_schema(
-        device_class="problem",
+    ).extend(
+        {
+            cv.Optional(CONF_ERROR_DESCRIPTION): text_sensor.text_sensor_schema(
+                icon="mdi:alert-circle-outline",
+            ),
+        }
     ),
     cv.Optional(CONF_HEAT_8_15_PRESET, default=False): cv.boolean,
 }
@@ -189,18 +191,17 @@ async def to_code(config):
         cg.add(var.set_current_power_consumption_sensor(sens))
 
     if CONF_ERROR_CODE in config:
-        ts = await text_sensor.new_text_sensor(config[CONF_ERROR_CODE])
+        conf = config[CONF_ERROR_CODE]
+        cg.add(var.set_error_code_enabled(True))
+        ts = await text_sensor.new_text_sensor(conf)
         cg.add(var.set_error_code_text_sensor(ts))
 
-    if CONF_ERROR_DESCRIPTION in config:
-        ts = await text_sensor.new_text_sensor(config[CONF_ERROR_DESCRIPTION])
-        cg.add(var.set_error_description_text_sensor(ts))
+        if CONF_ERROR_DESCRIPTION in conf:
+            cg.add_define("USE_PANASONIC_ERROR_DESCRIPTION")
+            desc_ts = await text_sensor.new_text_sensor(conf[CONF_ERROR_DESCRIPTION])
+            cg.add(var.set_error_description_text_sensor(desc_ts))
 
     cg.add(var.set_heat_8_15_preset_enabled(config[CONF_HEAT_8_15_PRESET]))
-
-    if CONF_ERROR_ACTIVE in config:
-        sens = await binary_sensor.new_binary_sensor(config[CONF_ERROR_ACTIVE])
-        cg.add(var.set_error_active_sensor(sens))
 
     if CONF_ANOMALY_SENSOR in config:
         ts = await text_sensor.new_text_sensor(config[CONF_ANOMALY_SENSOR])

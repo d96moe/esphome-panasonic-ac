@@ -114,6 +114,7 @@ void PanasonicAC::update_outside_temperature(int8_t temperature) {
   }
 }
 
+#ifdef USE_PANASONIC_ERROR_DESCRIPTION
 static const char *error_code_to_description(const std::string &code) {
   if (code == "H000") return "OK";
   if (code == "H011") return "Indoor/outdoor communication error";
@@ -148,19 +149,22 @@ static const char *error_code_to_description(const std::string &code) {
   if (code == "H990") return "UART communication error";
   return nullptr;
 }
+#endif  // USE_PANASONIC_ERROR_DESCRIPTION
 
 void PanasonicAC::update_error_code(const std::string &code) {
+  if (!this->error_code_enabled_)
+    return;
   if (this->error_code_state_ == code)
     return;  // Only publish on change
   this->error_code_state_ = code;
   if (this->error_code_text_sensor_ != nullptr)
     this->error_code_text_sensor_->publish_state(code);
+#ifdef USE_PANASONIC_ERROR_DESCRIPTION
   if (this->error_description_text_sensor_ != nullptr) {
     const char *desc = error_code_to_description(code);
     this->error_description_text_sensor_->publish_state(desc != nullptr ? desc : "Unknown: " + code);
   }
-  if (this->error_active_sensor_ != nullptr)
-    this->error_active_sensor_->publish_state(code != "H000");
+#endif
   ESP_LOGD(TAG, "AC error/status code: %s", code.c_str());
 }
 
@@ -379,13 +383,11 @@ void PanasonicAC::set_error_code_text_sensor(text_sensor::TextSensor *error_code
   this->error_code_text_sensor_ = error_code_text_sensor;
 }
 
+#ifdef USE_PANASONIC_ERROR_DESCRIPTION
 void PanasonicAC::set_error_description_text_sensor(text_sensor::TextSensor *error_description_text_sensor) {
   this->error_description_text_sensor_ = error_description_text_sensor;
 }
-
-void PanasonicAC::set_error_active_sensor(binary_sensor::BinarySensor *error_active_sensor) {
-  this->error_active_sensor_ = error_active_sensor;
-}
+#endif
 
 /*
  * Debugging

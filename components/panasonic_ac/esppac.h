@@ -48,9 +48,11 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   void set_econavi_switch(switch_::Switch *econavi_switch);
   void set_mild_dry_switch(switch_::Switch *mild_dry_switch);
   void set_current_power_consumption_sensor(sensor::Sensor *current_power_consumption_sensor);
+  void set_error_code_enabled(bool enabled) { this->error_code_enabled_ = enabled; }
   void set_error_code_text_sensor(text_sensor::TextSensor *error_code_text_sensor);
+#ifdef USE_PANASONIC_ERROR_DESCRIPTION
   void set_error_description_text_sensor(text_sensor::TextSensor *error_description_text_sensor);
-  void set_error_active_sensor(binary_sensor::BinarySensor *error_active_sensor);
+#endif
   void set_defrost_sensor(binary_sensor::BinarySensor *defrost_sensor);
   void set_heat_8_15_preset_enabled(bool enabled);
 
@@ -70,11 +72,16 @@ class PanasonicAC : public Component, public uart::UARTDevice, public climate::C
   switch_::Switch *mild_dry_switch_ = nullptr;                  // Switch to toggle mild dry mode on/off
   sensor::Sensor *current_temperature_sensor_ = nullptr;        // Sensor to use for current temperature where AC does not report
   sensor::Sensor *current_power_consumption_sensor_ = nullptr;  // Sensor to store current power consumption from queries
-  text_sensor::TextSensor *error_code_text_sensor_ = nullptr;          // Text sensor for the AC error/status code (e.g. "H000" = OK)
-  text_sensor::TextSensor *error_description_text_sensor_ = nullptr;   // Text sensor for human-readable description of error code
-  binary_sensor::BinarySensor *error_active_sensor_ = nullptr;         // Binary sensor, true when error code is not H000
-  binary_sensor::BinarySensor *defrost_sensor_ = nullptr;              // Sensor to store defrost status
-  std::string error_code_state_;                                       // Last published error code, to avoid duplicate publishes
+  // error_code_enabled_ is a master switch, off by default: the AC's error/status
+  // code is only known to be readable this way on the WLAN protocol - keeping it
+  // opt-in avoids any surprise behavior on units/protocols where it doesn't apply.
+  bool error_code_enabled_ = false;
+  text_sensor::TextSensor *error_code_text_sensor_ = nullptr;  // Text sensor for the AC error/status code (e.g. "H000" = OK)
+#ifdef USE_PANASONIC_ERROR_DESCRIPTION
+  text_sensor::TextSensor *error_description_text_sensor_ = nullptr;  // Text sensor for human-readable description of error code
+#endif
+  binary_sensor::BinarySensor *defrost_sensor_ = nullptr;  // Sensor to store defrost status
+  std::string error_code_state_;                           // Last published error code, to avoid duplicate publishes
 
   size_t vertical_swing_state_;
   size_t horizontal_swing_state_;
