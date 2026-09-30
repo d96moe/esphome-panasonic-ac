@@ -22,6 +22,7 @@ what was actually found/fixed/tested on these specific units.
 | CNT slot mechanism (byte 31-33) | ⚠️ Model-dependent — cabin (new) implements it, hallway (old) doesn't |
 | `determine_action()` overwrite bug | ✅ Fixed 2026-08-31 (was silently discarding byte-12 hvac_action on every deployed branch since 2026-08-20) |
 | `traits()` unconditional 8-30°C range | ✅ Fixed 2026-08-31 (now only widens when `heat_8_15_preset: true`) |
+| `heat_8_15` preset missing from HA | ✅ Fixed 2026-10-01 (custom preset list was overwritten in `setup()` since the 2026-08-20 upstream sync) |
 | Upstream PR #194 (byte-12 hvac_action) | 🕓 Open, no maintainer response yet (opened 2026-08-20) |
 | Report to ssjoholm (byte 20/31 findings, CNT fault-code question) | 🕓 PR open: https://github.com/ssjoholm/panasonic-cn-cnt/pull/1 |
 
@@ -202,6 +203,21 @@ currently active without a full client reconnect (confirmed via live testing
 in an earlier attempt, see fork commit history `fbe9aca`). Fix: gate the
 widened minimum on `this->heat_8_15_preset_enabled_`.
 
+### `heat_8_15` preset silently dropped from the preset list (found + fixed 2026-10-01)
+
+`setup()` registered `heat_8_15` with `set_supported_custom_presets({PRESET_HEAT_8_15})`,
+and a few lines later upstream's own call `set_supported_custom_presets({"Normal",
+"Powerful", "Quiet"})` (upstream `9612a3a`, merged into this branch by the
+2026-08-20 auto-sync `791682e`) **replaced** the list — `set_` overwrites, it
+doesn't append. The preset worked when it was built and tested on 2026-08-05,
+then disappeared from Home Assistant on every build after the 2026-08-20 sync
+(the cabin unit's `preset_modes` read `Normal, Powerful, Quiet` with
+`heat_8_15_preset: true` configured). Knock-on effect: the cabin's HA template
+that switches VT regulation to the bathroom sensor when the preset is
+`heat_8_15` could never trigger. Fix: register all custom presets in a single
+call, appending `heat_8_15` only when enabled. Like the `determine_action()`
+bug, this was reintroduced by the weekly sync — re-check after sync runs.
+
 ---
 
 ## Dead ends — commercial/service interfaces investigated for CNT telemetry
@@ -252,5 +268,6 @@ offsets unknown) if anyone ever wants to dig further.
 - **Weekly auto-sync**: Jenkins job `esphome-panasonic-ac-sync`
   (`ci/Jenkinsfile.sync`), Mondays 04:00, merges upstream `master` into fork
   branches including `heat-8-15-and-error-code`. This is the mechanism that
-  reintroduced the `determine_action()` bug at least once — any manual fix to
-  a synced branch should be double-checked after the next sync run.
+  reintroduced the `determine_action()` bug at least once, and also broke the
+  `heat_8_15` preset list (2026-08-20) — any manual fix to a synced branch
+  should be double-checked after the next sync run.

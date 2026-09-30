@@ -71,6 +71,10 @@ In order to find out which features are supported by your AC, check the remote t
 **Enabling unsupported features can lead to undefined behavior and may damage your AC. Make sure to check your remote or manual first.**
 **current_power_consumption is just as ESTIMATED value by the AC**
 
+### Heat 8-15°C mode (winter house frost protection)
+
+On units whose remote has an 8-15°C heat mode, set `heat_8_15_preset: true` on the climate. This adds a `heat_8_15` custom preset next to `Normal`, `Powerful` and `Quiet`, clamps the setpoint to 8-15°C while it is active, and widens the visual temperature range down to 8°C. It is off by default.
+
 ## Setting temperature offsets
 
 As the internal sensors reading might not reflect the actual temperature in the room or outside, you can optionally define a fixed offset for both sensors.

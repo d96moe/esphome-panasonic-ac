@@ -68,12 +68,13 @@ void PanasonicAC::setup() {
   this->last_packet_sent_ = millis();
   this->last_packet_received_ = millis();  // Prevent false serial_fault on cold start
 
-  if (this->heat_8_15_preset_enabled_) {
-    this->set_supported_custom_presets({PRESET_HEAT_8_15});
-  }
-
   this->set_supported_custom_fan_modes({"Automatic", "1", "2", "3", "4", "5"});
-  this->set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
+  // set_supported_custom_presets() replaces the list, so heat_8_15 must go in the same call.
+  if (this->heat_8_15_preset_enabled_) {
+    this->set_supported_custom_presets({"Normal", "Powerful", "Quiet", PRESET_HEAT_8_15});
+  } else {
+    this->set_supported_custom_presets({"Normal", "Powerful", "Quiet"});
+  }
 
   ESP_LOGI(TAG, "Panasonic AC component v%s starting...", VERSION);
 }
