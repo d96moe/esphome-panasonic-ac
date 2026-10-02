@@ -65,8 +65,14 @@ PANASONIC_COMMON_SCHEMA = {
         state_class=STATE_CLASS_MEASUREMENT,
     ),
     cv.Optional(CONF_DEFROST_SENSOR): binary_sensor.binary_sensor_schema(),
-    # Only known to be readable on the WLAN protocol (DNSK-P11) - opt-in, not
-    # exposed by default, so CNT setups aren't affected.
+    cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
+    cv.Optional(CONF_OUTSIDE_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
+    cv.Optional(CONF_CURRENT_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
+}
+
+PANASONIC_WLAN_SCHEMA = {
+    # The error code is only readable on the WLAN protocol (DNSK-P11), so the
+    # option is rejected for CNT instead of silently never updating.
     cv.Optional(CONF_ERROR_CODE): text_sensor.text_sensor_schema(
         entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
     ).extend(
@@ -76,9 +82,6 @@ PANASONIC_COMMON_SCHEMA = {
             ),
         }
     ),
-    cv.Optional(CONF_NANOEX_SWITCH): SWITCH_SCHEMA,
-    cv.Optional(CONF_OUTSIDE_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
-    cv.Optional(CONF_CURRENT_TEMPERATURE_OFFSET): cv.int_range(min=-15, max=15),
 }
 
 PANASONIC_CNT_SCHEMA = {
@@ -96,7 +99,7 @@ PANASONIC_CNT_SCHEMA = {
 
 CONFIG_SCHEMA = cv.typed_schema(
     {
-        CONF_WLAN: climate.climate_schema(PanasonicACWLAN).extend(PANASONIC_COMMON_SCHEMA).extend(uart.UART_DEVICE_SCHEMA),
+        CONF_WLAN: climate.climate_schema(PanasonicACWLAN).extend(PANASONIC_COMMON_SCHEMA).extend(PANASONIC_WLAN_SCHEMA).extend(uart.UART_DEVICE_SCHEMA),
         CONF_CNT: climate.climate_schema(PanasonicACCNT).extend(PANASONIC_COMMON_SCHEMA).extend(PANASONIC_CNT_SCHEMA).extend(uart.UART_DEVICE_SCHEMA),
     }
 )
