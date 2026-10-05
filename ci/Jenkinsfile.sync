@@ -5,7 +5,11 @@
 // Two-stage sync:
 //   1. Merge upstream/master into this fork's own master (fast, usually clean).
 //   2. Merge the freshly-synced master into each deployed feature branch
-//      (error-code-sensor, heat-8-15-and-error-code, cnt-action-from-state-byte).
+//      (heat-8-15-and-error-code, cnt-action-from-state-byte).
+//      NEVER add an upstream PR branch here (e.g. error-code-sensor = PR #196,
+//      hvac-action-from-state-byte = PR #194): this fork's master carries
+//      fork-only work (fan/preset rework, CI, docs), and merging it into a PR
+//      branch drags all of that into the PR (happened to #196 on 2026-09-07).
 //      Each feature branch is isolated: a conflict in one does not block the
 //      others. Any branch that conflicts is left untouched (merge aborted) and
 //      reported at the end — the build fails so it surfaces on the Jenkins
@@ -52,7 +56,7 @@ pipeline {
                         echo "master synced: $(git log -1 --oneline)"
 
                         FAILED_BRANCHES=""
-                        for branch in error-code-sensor heat-8-15-and-error-code cnt-action-from-state-byte; do
+                        for branch in heat-8-15-and-error-code cnt-action-from-state-byte; do
                             echo "=== Syncing $branch ==="
                             git checkout "$branch"
                             if git merge master -m "Merge master into $branch (upstream sync)"; then
