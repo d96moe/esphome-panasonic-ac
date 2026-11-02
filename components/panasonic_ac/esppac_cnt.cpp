@@ -456,9 +456,30 @@ void PanasonicACCNT::handle_poll() {
   }
 }
 
+/*
+ * Commands are built by copying `data`, the last status the AC reported. Right after a
+ * command is sent, `data` still holds the pre-command state until the AC answers, so a
+ * second command built in that window (e.g. a thermostat pushing a setpoint ~1 s after
+ * heat_8_15 was selected) would silently restore the old fan/preset bytes and drop the
+ * AC out of heat_8_15. While heat_8_15 is active, re-assert its defining bytes on every
+ * outgoing command.
+ */
+void PanasonicACCNT::enforce_heat_8_15_cmd_() {
+  if (!this->heat_8_15_mode_ || this->cmd.empty())
+    return;
+
+  this->cmd[0] = 0x44;                   // HEAT mode + ON
+  this->cmd[3] = 0x70;                   // Max fan (level 5)
+  this->cmd[5] = (this->cmd[5] & 0xF0);  // Clear preset bits (powerful/quiet)
+  const uint8_t min_raw = (uint8_t)(MIN_TEMPERATURE_HEAT_8_15 / TEMPERATURE_STEP);
+  const uint8_t max_raw = (uint8_t)(MAX_TEMPERATURE_HEAT_8_15 / TEMPERATURE_STEP);
+  this->cmd[1] = std::max(min_raw, std::min(max_raw, this->cmd[1]));
+}
+
 void PanasonicACCNT::handle_cmd() {
   if (!this->cmd.empty() && millis() - this->last_packet_sent_ > CMD_INTERVAL) {
     ESP_LOGV(TAG, "Sending Command");
+    this->enforce_heat_8_15_cmd_();
     this->last_commanded_mode_byte_ = this->cmd[0];
     send_command(this->cmd, CommandType::Normal, CTRL_HEADER);
     this->cmd.clear();

@@ -23,6 +23,7 @@ what was actually found/fixed/tested on these specific units.
 | `determine_action()` overwrite bug | ✅ Fixed 2026-08-31 (was silently discarding byte-12 hvac_action on every deployed branch since 2026-08-20) |
 | `traits()` unconditional 8-30°C range | ✅ Fixed 2026-08-31 (now only widens when `heat_8_15_preset: true`) |
 | `heat_8_15` preset missing from HA | ✅ Fixed 2026-10-01 (custom preset list was overwritten in `setup()` since the 2026-08-20 upstream sync) |
+| `heat_8_15` overwritten ~1 s after entry | ✅ Fixed 2026-11-02 (a follow-up command built from stale `data` restored fan auto/eco; heat_8_15 bytes are now re-asserted on every outgoing command) |
 | Upstream PR #194 (byte-12 hvac_action) | 🕓 Open, no maintainer response yet (opened 2026-08-20) |
 | Report to ssjoholm (byte 20/31 findings, CNT fault-code question) | 🕓 PR open: https://github.com/ssjoholm/panasonic-cn-cnt/pull/1 |
 
@@ -217,6 +218,28 @@ that switches VT regulation to the bathroom sensor when the preset is
 `heat_8_15` could never trigger. Fix: register all custom presets in a single
 call, appending `heat_8_15` only when enabled. Like the `determine_action()`
 bug, this was reintroduced by the weekly sync — re-check after sync runs.
+
+### `heat_8_15` overwritten one second after entry (found + fixed 2026-11-02)
+
+On the cabin unit, heat_8_15 was selected on 2026-10-30 10:23:19 (HEAT, fan
+`0x70`, 10.5°C, preset bits cleared). At 10:23:20 the thermostat (VT) pushed a
+setpoint of 8°C. `control()` builds every command by copying `data` when `cmd`
+is empty, and `handle_cmd()` clears `cmd` right after sending — but `data` only
+updates when the AC answers. The second command was therefore built from the
+*pre-heat_8_15* status (fan auto, quiet/"eco" bit set) with just the setpoint
+changed, which silently undid heat_8_15. `set_data()` then no longer detected
+heat_8_15 (needs fan `0x70`), the entity reported `eco`, and the AC ran normal
+heat with its 16°C floor: it held the room at ~18°C for two days. Thermostats
+that mirror the preset (VT) and Comfort Cloud kept showing `heat_8_15`; only
+this entity showed the truth. Re-entering it a second time "worked" only
+because the stale status then already had fan `0x70` and no preset bits.
+
+Fix: `enforce_heat_8_15_cmd_()`, called in `handle_cmd()` just before sending,
+re-asserts HEAT+ON, fan `0x70`, cleared preset bits and an 8-15°C setpoint on
+every outgoing command while `heat_8_15_mode_` is set. It covers every command
+path that copies `data` (climate calls, swing/nanoex/eco/econavi/mild-dry
+setters). Leaving heat_8_15 (mode or preset change) clears the flag before the
+command is built, so it is unaffected.
 
 ---
 

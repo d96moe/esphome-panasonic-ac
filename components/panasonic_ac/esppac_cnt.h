@@ -86,6 +86,7 @@ class PanasonicACCNT : public PanasonicAC {
 
   void handle_poll();
   void handle_cmd();
+  void enforce_heat_8_15_cmd_();
 
   void set_data(bool set);
 
