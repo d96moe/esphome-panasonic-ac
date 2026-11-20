@@ -1,6 +1,11 @@
 #include "esppac.h"
 
 #include "esphome/core/log.h"
+// ESPHome 2026.11 (#20389) stopped re-exporting alloc_helpers.h from helpers.h;
+// format_hex_pretty() (used by log_packet) lives there. Guarded for older ESPHome.
+#if __has_include("esphome/core/alloc_helpers.h")
+#include "esphome/core/alloc_helpers.h"
+#endif
 
 namespace esphome {
 namespace panasonic_ac {
